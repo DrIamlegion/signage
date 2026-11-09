@@ -1,0 +1,30 @@
+IDI_SIGNAGE ICON "assets/Signage.ico"
+
+1 VERSIONINFO
+FILEVERSION 1,1,0,0
+PRODUCTVERSION 1,1,0,0
+FILEFLAGSMASK 0x3fL
+FILEFLAGS 0x0L
+FILEOS 0x40004L
+FILETYPE 0x1L
+FILESUBTYPE 0x0L
+BEGIN
+  BLOCK "StringFileInfo"
+  BEGIN
+    BLOCK "040904B0"
+    BEGIN
+      VALUE "CompanyName", "Signage"
+      VALUE "FileDescription", "Signage - digitale signage (installer en launcher)"
+      VALUE "FileVersion", "1.1.0"
+      VALUE "InternalName", "Signage"
+      VALUE "LegalCopyright", "Gratis en zelf-gehost"
+      VALUE "OriginalFilename", "Signage-Setup.exe"
+      VALUE "ProductName", "Signage"
+      VALUE "ProductVersion", "1.1.0"
+    END
+  END
+  BLOCK "VarFileInfo"
+  BEGIN
+    VALUE "Translation", 0x409, 1200
+  END
+END

@@ -1,0 +1,512 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Signage — beheer</title>
+<link rel="icon" href="/icon.svg">
+<link rel="stylesheet" href="/slide-render.css?v={{v}}">
+<link rel="stylesheet" href="/admin.css?v={{v}}">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand"><span class="dot"></span> <strong>Signage</strong></div>
+  <nav class="tabs">
+    <button class="tab active" data-tab="screens">Schermen</button>
+    <button class="tab" data-tab="decks">Presentaties</button>
+    <button class="tab" data-tab="media">Media</button>
+    <button class="tab" data-tab="settings">Instellingen</button>
+  </nav>
+  <div class="topbar-right">
+    <span id="online-count" class="muted"></span>
+    <button id="logout" class="ghost" title="Uitloggen">Uitloggen</button>
+  </div>
+</header>
+
+<main>
+  <!-- SCHERMEN -->
+  <section id="tab-screens" class="tabpane active">
+    <aside class="screens">
+      <div class="aside-head">
+        <h2>Schermen</h2>
+        <button id="add-screen" class="primary small">+ Nieuw</button>
+      </div>
+      <ul id="screen-list" class="screen-list"></ul>
+      <p id="no-screens" class="muted pad hidden">Nog geen schermen. Maak er een aan.</p>
+    </aside>
+
+    <div id="editor" class="editor hidden">
+      <div class="editor-head">
+        <input id="screen-name" class="title-input" maxlength="80" placeholder="Naam van het scherm">
+        <span id="screen-status" class="status-pill"></span>
+      </div>
+
+      <div class="player-link">
+        <label>Player-link (open dit op het scherm)</label>
+        <div class="row">
+          <input id="player-url" readonly>
+          <button id="copy-url" class="ghost">Kopiëren</button>
+          <button id="open-player" class="ghost">Openen</button>
+          <button id="rotate-key" class="ghost" title="Maak een nieuwe link; de oude link werkt daarna niet meer">Nieuwe link</button>
+        </div>
+        <p class="muted small">Werkt in elke browser op Windows en Chrome OS. Zet het scherm op volledig scherm (F11 of de volledig-scherm-toets) of installeer de pagina als app.</p>
+      </div>
+
+      <div class="screen-options">
+        <label>Beeldvulling
+          <select id="screen-fit">
+            <option value="contain">Passend maken (met randen)</option>
+            <option value="cover">Volledig vullen (bijsnijden)</option>
+          </select>
+        </label>
+        <label class="check"><input type="checkbox" id="screen-paused"> Pauzeren</label>
+        <button id="delete-screen" class="danger ghost">Scherm verwijderen</button>
+      </div>
+
+      <h3>Playlist</h3>
+      <ol id="playlist" class="playlist"></ol>
+      <p id="empty-playlist" class="muted pad hidden">Nog niets in deze playlist. Voeg media of een URL toe.</p>
+
+      <div class="add-item">
+        <select id="media-picker"><option value="">— kies media —</option></select>
+        <button id="add-media" class="primary">+ Media</button>
+        <span class="sep"></span>
+        <select id="deck-picker"><option value="">— kies presentatie —</option></select>
+        <button id="add-deck" class="primary">+ Presentatie</button>
+        <span class="sep"></span>
+        <input id="url-input" placeholder="https://… of Google Presentaties-link">
+        <button id="add-url" class="primary">+ URL</button>
+      </div>
+    </div>
+
+    <div id="no-selection" class="placeholder">
+      <p>Selecteer een scherm links, of maak een nieuw scherm aan.</p>
+    </div>
+  </section>
+
+  <!-- PRESENTATIES -->
+  <section id="tab-decks" class="tabpane">
+    <aside class="rail">
+      <div class="rail-head">
+        <span class="rail-title">Presentaties</span>
+        <button id="new-deck" class="icon-btn" title="Nieuwe presentatie">+</button>
+      </div>
+      <ul id="deck-list" class="deck-list"></ul>
+      <p id="no-decks" class="muted small hidden">Nog geen presentaties. Maak er een aan.</p>
+    </aside>
+
+    <div id="deck-editor" class="editor hidden">
+      <div class="doc-bar">
+        <input id="deck-name" class="doc-title" maxlength="80" placeholder="Naam van de presentatie">
+        <div class="doc-actions">
+          <button id="delete-deck" class="ghost danger">Verwijderen</button>
+        </div>
+      </div>
+
+      <div class="ribbon">
+        <div class="ribbon-tabs" role="tablist">
+          <button class="ribbon-tab active" type="button" role="tab" aria-selected="true" data-ribbon-tab="start">Start</button>
+          <button class="ribbon-tab" type="button" role="tab" aria-selected="false" data-ribbon-tab="insert">Invoegen</button>
+          <button class="ribbon-tab" type="button" role="tab" aria-selected="false" data-ribbon-tab="design">Ontwerp</button>
+          <button class="ribbon-tab" type="button" role="tab" aria-selected="false" data-ribbon-tab="anim">Animaties</button>
+        </div>
+
+        <div class="ribbon-body">
+          <div class="ribbon-panel active" data-ribbon-panel="start" role="tabpanel">
+            <div class="ribbon-group">
+              <div class="ribbon-items">
+                <button id="add-deck-slide" class="ribbon-btn" type="button" title="Een lege dia toevoegen" aria-label="Nieuwe dia">
+                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="3.5" y="5" width="17" height="12" rx="1.6"/><path d="M12 9v4M10 11h4"/></svg>
+                  <span>Nieuwe dia</span>
+                </button>
+                <button id="duplicate-slide" class="ribbon-btn compact" type="button" title="Deze dia kopiëren" aria-label="Deze dia kopiëren">
+                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="1.6"/><path d="M15 5.5H5.5A1.5 1.5 0 0 0 4 7v9.5"/></svg>
+                </button>
+                <button id="delete-slide" class="ribbon-btn compact danger" type="button" title="Deze dia verwijderen" aria-label="Deze dia verwijderen">
+                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M4 7h16M9 7V4.8h6V7M6.5 7l.8 12.2h9.4L17.5 7"/><path d="M10 10.5v5.5M14 10.5v5.5"/></svg>
+                </button>
+              </div>
+              <div class="ribbon-label">Dia</div>
+            </div>
+
+            <div class="ribbon-sep"></div>
+
+            <div class="ribbon-group">
+              <div class="ribbon-items">
+                <label class="ribbon-field">Lay-out
+                  <select id="slide-layout">
+                    <option value="title">Titel</option>
+                    <option value="text">Titel met bullets</option>
+                    <option value="image-left">Afbeelding links</option>
+                    <option value="image-right">Afbeelding rechts</option>
+                    <option value="full">Volledige afbeelding</option>
+                    <option value="quote">Citaat</option>
+                    <option value="free">Vrij canvas</option>
+                  </select>
+                </label>
+              </div>
+              <div class="ribbon-label">Indeling</div>
+            </div>
+
+            <div class="ribbon-sep"></div>
+
+            <div class="ribbon-group">
+              <div class="ribbon-items">
+                <button id="rb-bold" class="ribbon-btn compact glyph-btn" type="button" data-format="bold" title="Vet (geselecteerd element)" aria-pressed="false">B</button>
+                <button id="rb-italic" class="ribbon-btn compact glyph-btn italic" type="button" data-format="italic" title="Cursief (geselecteerd element)" aria-pressed="false">I</button>
+                <button id="rb-underline" class="ribbon-btn compact glyph-btn underline" type="button" data-format="underline" title="Onderstreept (geselecteerd element)" aria-pressed="false">U</button>
+                <button id="rb-bullet" class="ribbon-btn compact" type="button" data-format="bullet" title="Bullets (geselecteerd element)" aria-pressed="false">
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M9 6.5h11M9 12h11M9 17.5h11"/><circle cx="4.5" cy="6.5" r="1.2" fill="currentColor" stroke="none"/><circle cx="4.5" cy="12" r="1.2" fill="currentColor" stroke="none"/><circle cx="4.5" cy="17.5" r="1.2" fill="currentColor" stroke="none"/></svg>
+                </button>
+              </div>
+              <div class="ribbon-label">Tekst</div>
+            </div>
+
+            <div class="ribbon-sep"></div>
+
+            <div class="ribbon-group">
+              <div class="ribbon-items">
+                <button class="ribbon-btn compact" type="button" data-el-align="left" title="Links uitlijnen">
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M4 5v14"/><path d="M8 7.5h12M8 12h8M8 16.5h10"/></svg>
+                </button>
+                <button class="ribbon-btn compact" type="button" data-el-align="center" title="Horizontaal midden">
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M12 5v14"/><path d="M4 7.5h16M7 12h10M5 16.5h14"/></svg>
+                </button>
+                <button class="ribbon-btn compact" type="button" data-el-align="right" title="Rechts uitlijnen">
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M20 5v14"/><path d="M4 7.5h12M8 12h8M6 16.5h10"/></svg>
+                </button>
+                <button class="ribbon-btn compact" type="button" data-el-align="top" title="Boven uitlijnen">
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M5 4h14"/><path d="M8 8v12M12 8v8M16 8v10"/></svg>
+                </button>
+                <button class="ribbon-btn compact" type="button" data-el-align="middle" title="Verticaal midden">
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M5 12h14"/><path d="M8 4v6M8 14v6M12 4v4M12 16v4M16 4v6M16 14v6"/></svg>
+                </button>
+                <button class="ribbon-btn compact" type="button" data-el-align="bottom" title="Onder uitlijnen">
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M5 20h14"/><path d="M8 4v12M12 4v8M16 4v10"/></svg>
+                </button>
+              </div>
+              <div class="ribbon-label">Uitlijnen</div>
+            </div>
+
+            <div class="ribbon-sep"></div>
+
+            <div class="ribbon-group">
+              <div class="ribbon-items">
+                <button id="bring-front" class="ribbon-btn compact" type="button" title="Element naar voren">
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="4" y="4" width="10" height="10" rx="1.5"/><path d="M10 14v6h10V10h-6" stroke-dasharray="2 2"/></svg>
+                </button>
+                <button id="send-back" class="ribbon-btn compact" type="button" title="Element naar achteren">
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="10" y="10" width="10" height="10" rx="1.5"/><path d="M14 10V4H4v10h6" stroke-dasharray="2 2"/></svg>
+                </button>
+                <button id="duplicate-el" class="ribbon-btn compact" type="button" title="Element dupliceren">
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="1.6"/><path d="M15 5.5H5.5A1.5 1.5 0 0 0 4 7v9.5"/></svg>
+                </button>
+                <button id="delete-el" class="ribbon-btn compact danger" type="button" title="Element verwijderen">
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M4 7h16M9 7V4.8h6V7M6.5 7l.8 12.2h9.4L17.5 7"/><path d="M10 10.5v5.5M14 10.5v5.5"/></svg>
+                </button>
+              </div>
+              <div class="ribbon-label">Schikken</div>
+            </div>
+          </div>
+
+          <div class="ribbon-panel" data-ribbon-panel="insert" role="tabpanel">
+            <div class="ribbon-group">
+              <div class="ribbon-items">
+                <button id="add-text-el" class="ribbon-btn" type="button" title="Tekstvak toevoegen" aria-label="Tekst toevoegen">
+                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M5 6.5V4.5h14v2M12 4.5v15M9 19.5h6"/></svg>
+                  <span>Tekst</span>
+                </button>
+                <button id="add-image-el" class="ribbon-btn" type="button" title="Afbeelding toevoegen" aria-label="Afbeelding toevoegen">
+                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="3.5" y="5" width="17" height="14" rx="2"/><circle cx="9" cy="10" r="1.5"/><path d="M4 17l5-5 4 4 3-2 4 3"/></svg>
+                  <span>Afbeelding</span>
+                </button>
+                <button id="add-shape-el" class="ribbon-btn" type="button" title="Vorm toevoegen" aria-label="Vorm toevoegen">
+                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="3.5" y="3.5" width="10" height="10" rx="1.5"/><circle cx="16" cy="16" r="4.5"/></svg>
+                  <span>Vorm</span>
+                </button>
+                <button id="add-line-el" class="ribbon-btn" type="button" title="Lijn toevoegen" aria-label="Lijn toevoegen">
+                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M5 19L19 5"/><circle cx="5" cy="19" r="1.4" fill="currentColor" stroke="none"/><circle cx="19" cy="5" r="1.4" fill="currentColor" stroke="none"/></svg>
+                  <span>Lijn</span>
+                </button>
+              </div>
+              <div class="ribbon-label">Elementen op de dia</div>
+            </div>
+          </div>
+
+          <div class="ribbon-panel" data-ribbon-panel="design" role="tabpanel">
+            <div class="ribbon-group">
+              <div class="ribbon-items">
+                <label class="ribbon-field">Achtergrond<input type="color" id="slide-bg" value="#0f172a"></label>
+                <label class="ribbon-field">Tekst<input type="color" id="slide-fg" value="#f8fafc"></label>
+                <label class="ribbon-field">Accent<input type="color" id="slide-accent" value="#5b8cff"></label>
+              </div>
+              <div class="ribbon-label">Kleuren</div>
+            </div>
+
+            <div class="ribbon-sep"></div>
+
+            <div class="ribbon-group">
+              <div class="ribbon-items">
+                <label class="ribbon-field">Tweede kleur<input type="color" id="slide-bg2" value="#1d4ed8"></label>
+                <label class="ribbon-field">Hoek<input type="range" id="slide-bg-angle" min="0" max="360" step="5" value="135"></label>
+                <label class="ribbon-check"><input type="checkbox" id="slide-bg2-on"> Verloop</label>
+              </div>
+              <div class="ribbon-label">Achtergrondverloop</div>
+            </div>
+          </div>
+
+          <div class="ribbon-panel" data-ribbon-panel="anim" role="tabpanel">
+            <div class="ribbon-group">
+              <div class="ribbon-items">
+                <label class="ribbon-field">Elementanimatie
+                  <select id="el-anim">
+                    <option value="none">Geen</option>
+                    <option value="fade">Vervagen</option>
+                    <option value="up">Omhoog</option>
+                    <option value="zoom">Inzoomen</option>
+                  </select>
+                </label>
+                <label class="ribbon-field">Vertraging (s)<input type="number" id="el-delay" min="0" max="20" step="0.1" value="0"></label>
+              </div>
+              <div class="ribbon-label">Geselecteerd element</div>
+            </div>
+
+            <div class="ribbon-sep"></div>
+
+            <div class="ribbon-group">
+              <div class="ribbon-items">
+                <label class="ribbon-field">Overgang
+                  <select id="deck-transition">
+                    <option value="fade">Vervagen</option>
+                    <option value="push">Opschuiven</option>
+                    <option value="wipe">Vegen</option>
+                    <option value="zoom">Inzoomen</option>
+                    <option value="none">Direct</option>
+                  </select>
+                </label>
+                <label class="ribbon-field">Duur per dia<input type="number" id="slide-duration" min="1" max="600" placeholder="standaard"></label>
+                <label class="ribbon-field">Standaardduur<input type="number" id="deck-duration" min="1" max="600" step="1"></label>
+              </div>
+              <div class="ribbon-label">Dia en overgang</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="workarea">
+        <div class="slide-rail">
+          <div class="rail-head">
+            <span class="rail-title">Dia's</span>
+          </div>
+          <div id="slide-strip" class="slide-strip"></div>
+        </div>
+
+        <div class="canvas-col">
+          <div class="canvas-bench">
+            <div class="slide-preview"><div id="slide-preview-box"></div></div>
+          </div>
+          <div class="statusbar">
+            <span id="slide-counter">Slide 1</span>
+            <span id="deck-meta" class="muted"></span>
+            <span class="grow"></span>
+            <span class="muted hide-small">Sleep elementen in de dia bij vrij canvas</span>
+          </div>
+        </div>
+
+        <aside class="format-pane slide-fields">
+          <div class="pane-title">Opmaak</div>
+
+          <div class="sec fixed-only">
+            <div class="sec-head">Tekst</div>
+            <label class="field">Titel<input id="slide-title" maxlength="140" placeholder="Welkom"></label>
+            <label class="field">Ondertitel<input id="slide-subtitle" maxlength="240" placeholder="Optioneel"></label>
+            <label class="field">Tekst / bullets<textarea id="slide-body" rows="4" maxlength="800" placeholder="Eén regel per bullet"></textarea></label>
+            <label class="field">Voettekst<input id="slide-footer" maxlength="140" placeholder="bijv. www.voorbeeld.nl"></label>
+            <label class="field">Notities (voor jezelf)<textarea id="slide-notes" rows="2" maxlength="2000" placeholder="Alleen zichtbaar in het beheer"></textarea></label>
+          </div>
+
+          <div class="sec fixed-only">
+            <div class="sec-head">Afbeelding</div>
+            <label class="field">Afbeelding<select id="slide-image"><option value="">— geen —</option></select></label>
+            <label class="field">Donkerte afbeelding<input type="range" id="slide-shade" min="0" max="100" value="45"></label>
+          </div>
+
+          <div class="sec fixed-only">
+            <div class="sec-head">Positie</div>
+            <div class="row thirds">
+              <label class="field">Uitlijning
+                <select id="slide-align">
+                  <option value="center">Gecentreerd</option>
+                  <option value="left">Links</option>
+                </select>
+              </label>
+              <label class="field">Tekstgrootte<input type="range" id="slide-scale" min="70" max="150" value="100"></label>
+            </div>
+          </div>
+
+          <div id="free-tools" class="free-tools hidden">
+            <div class="sec-head">Canvas-elementen</div>
+            <div id="el-inspector" class="el-inspector hidden">
+              <label class="field">Tekst<textarea id="el-text" rows="2" maxlength="400"></textarea></label>
+              <div class="row thirds">
+                <label class="field">Grootte<input type="range" id="el-size" min="2" max="30" step="0.5"></label>
+                <label class="field">Kleur<input type="color" id="el-color" value="#f8fafc"></label>
+                <label class="field">Doorzichtig<input type="range" id="el-opacity" min="10" max="100" step="5" value="100"></label>
+              </div>
+              <div class="row thirds">
+                <label class="field">Uitlijning
+                  <select id="el-align">
+                    <option value="left">Links</option>
+                    <option value="center">Midden</option>
+                    <option value="right">Rechts</option>
+                  </select>
+                </label>
+                <label class="field">Verticaal
+                  <select id="el-valign">
+                    <option value="top">Boven</option>
+                    <option value="center">Midden</option>
+                    <option value="bottom">Onder</option>
+                  </select>
+                </label>
+                <label class="field">Stijl
+                  <select id="el-weight">
+                    <option value="normal">Normaal</option>
+                    <option value="bold">Vet</option>
+                  </select>
+                </label>
+              </div>
+              <div class="row">
+                <label class="check"><input type="checkbox" id="el-italic"> Cursief</label>
+                <label class="check"><input type="checkbox" id="el-underline"> Onderstreept</label>
+                <label class="check"><input type="checkbox" id="el-bullet"> Bullets</label>
+              </div>
+              <div class="row thirds">
+                <label class="field">Regelafstand<input type="range" id="el-line-height" min="90" max="240" step="5" value="128"></label>
+                <label class="field">Letterafstand<input type="range" id="el-letter-spacing" min="-5" max="20" step="1" value="0"></label>
+                <label class="field">Ronding<input type="range" id="el-radius" min="0" max="20" step="1"></label>
+              </div>
+              <div class="row halves">
+                <label class="field">Achtergrond
+                  <span class="row tight">
+                    <input type="color" id="el-bg" value="#000000">
+                    <input type="checkbox" id="el-bg-on" title="Achtergrond aan of uit">
+                  </span>
+                </label>
+                <label class="field">Vulling
+                  <select id="el-fit">
+                    <option value="cover">Vullen</option>
+                    <option value="contain">Passend</option>
+                  </select>
+                </label>
+              </div>
+              <label class="field">Afbeelding<select id="el-image"><option value="">— geen —</option></select></label>
+              <div class="row thirds shape-row">
+                <label class="field">Vorm
+                  <select id="el-shape">
+                    <option value="rect">Rechthoek</option>
+                    <option value="round">Afgerond</option>
+                    <option value="ellipse">Cirkel</option>
+                    <option value="triangle">Driehoek</option>
+                    <option value="line">Lijn</option>
+                    <option value="arrow">Pijl</option>
+                    <option value="star">Ster</option>
+                  </select>
+                </label>
+                <label class="field">Vormkleur
+                  <span class="row tight">
+                    <input type="color" id="el-fill" value="#e8622c">
+                    <input type="checkbox" id="el-fill-on" title="Vulling aan of uit">
+                  </span>
+                </label>
+                <label class="field">Rand
+                  <span class="row tight">
+                    <input type="color" id="el-stroke" value="#f8fafc">
+                    <input type="checkbox" id="el-stroke-on" title="Rand aan of uit">
+                  </span>
+                </label>
+                <label class="field">Randdikte<input type="range" id="el-stroke-width" min="0" max="20" step="1" value="2"></label>
+              </div>
+              <label class="field">Uitlijnen tegen de dia
+                <span class="seg">
+                  <button class="ghost" type="button" data-el-align="left" title="Links">⇤</button>
+                  <button class="ghost" type="button" data-el-align="center" title="Horizontaal midden">↔</button>
+                  <button class="ghost" type="button" data-el-align="right" title="Rechts">⇥</button>
+                  <button class="ghost" type="button" data-el-align="top" title="Boven">⇡</button>
+                  <button class="ghost" type="button" data-el-align="middle" title="Verticaal midden">↕</button>
+                  <button class="ghost" type="button" data-el-align="bottom" title="Onder">⇣</button>
+                </span>
+              </label>
+              <div class="row pos-row"><span class="muted small">Positie</span><output id="el-pos" class="muted small"></output></div>
+              <p class="muted small">Sleep een element in de dia om het te verplaatsen; sleep het hoekje rechtsonder om te vergroten.</p>
+            </div>
+          </div>
+
+          <div class="pane-footer">
+            <button id="apply-slide" class="primary">Slide bijwerken</button>
+          </div>
+        </aside>
+      </div>
+    </div>
+
+    <div id="no-deck-selection" class="placeholder">
+      <p>Selecteer een presentatie links, of maak een nieuwe aan.</p>
+    </div>
+  </section>
+
+  <!-- MEDIA -->
+  <section id="tab-media" class="tabpane">
+    <div class="pane-head">
+      <h2>Media</h2>
+      <p class="muted small">Sleep bestanden hierheen of kies ze. Afbeeldingen, video's en PDF's tot 2 GB.</p>
+    </div>
+    <div id="dropzone" class="dropzone">
+      <input type="file" id="file-input" multiple hidden>
+      <p><strong>Sleep bestanden hierheen</strong> of <button id="pick-files" class="ghost">kies bestanden</button></p>
+      <div id="upload-progress" class="progress hidden"><div id="upload-bar"></div></div>
+    </div>
+    <div id="media-grid" class="media-grid"></div>
+    <p id="no-media" class="muted pad hidden">Nog geen media geüpload.</p>
+  </section>
+
+  <!-- INSTELLINGEN -->
+  <section id="tab-settings" class="tabpane">
+    <div class="pane-head"><h2>Instellingen</h2></div>
+    <div class="card">
+      <h3>Standaardduur</h3>
+      <p class="muted small">Hoe lang een nieuwe afbeelding of URL in beeld blijft.</p>
+      <div class="row">
+        <input type="number" id="default-duration" min="1" max="3600" step="1"> <span class="muted">seconden</span>
+        <button id="save-duration" class="primary">Opslaan</button>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Wachtwoord</h3>
+      <p class="muted small">Het huidige wachtwoord staat in <code>data/admin-password.txt</code> op de server.</p>
+      <div class="row">
+        <input type="password" id="new-password" placeholder="Nieuw wachtwoord (min. 6 tekens)">
+        <button id="save-password" class="primary">Wijzigen</button>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Over</h3>
+      <p class="muted small">Signage is een kleine zelf-gehoste signage-app. Geen account, geen abonnement, geen reclame — alleen je eigen server en je eigen schermen.</p>
+    </div>
+  </section>
+</main>
+
+<!-- LOGIN -->
+<div id="login" class="overlay hidden">
+  <form id="login-form" class="login-card">
+    <h1>Signage</h1>
+    <p class="muted small">Log in om je schermen te beheren.</p>
+    <input type="password" id="login-password" placeholder="Wachtwoord" autocomplete="current-password" required>
+    <button class="primary" type="submit">Inloggen</button>
+    <p id="login-error" class="error hidden"></p>
+  </form>
+</div>
+
+<div id="toast" class="toast hidden"></div>
+<script src="/slide-render.js?v={{v}}"></script>
+<script src="/admin.js?v={{v}}"></script>
+</body>
+</html>

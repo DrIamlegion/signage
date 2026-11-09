@@ -1,0 +1,229 @@
+.slideView {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--slide-bg, #0f172a);
+  color: var(--slide-fg, #f8fafc);
+  container-type: size;
+  display: grid;
+  place-items: center;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+.slideView .slideText {
+  position: relative;
+  z-index: 2;
+  padding: 6% 8%;
+  width: 100%;
+  max-width: 92%;
+  text-align: center;
+}
+
+.slideView.left .slideText {
+  text-align: left;
+}
+
+.slideView h1 {
+  margin: 0;
+  font-size: 44px;
+  font-size: calc(8cqw * var(--slide-scale, 1));
+  line-height: 1.1;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  overflow-wrap: anywhere;
+}
+
+.slideView .slideSub {
+  margin: 3.5% 0 0;
+  font-size: 20px;
+  font-size: calc(3.2cqw * var(--slide-scale, 1));
+  line-height: 1.35;
+  opacity: 0.88;
+  overflow-wrap: anywhere;
+}
+
+.slideView .slideList {
+  list-style: none;
+  margin: 4.5% 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2%;
+  text-align: left;
+  font-size: 18px;
+  font-size: calc(2.7cqw * var(--slide-scale, 1));
+}
+
+.slideView .slideList li {
+  position: relative;
+  padding-left: 1.7em;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.slideView .slideList li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.62em;
+  width: 0.45em;
+  height: 0.45em;
+  border-radius: 2px;
+  background: var(--slide-accent, #5b8cff);
+}
+
+.slideView .slideBar {
+  display: block;
+  width: 12%;
+  min-width: 36px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--slide-accent, #5b8cff);
+  margin: 0 auto 4.5%;
+}
+
+.slideView.left .slideBar {
+  margin-left: 0;
+}
+
+.slideView .slideFooter {
+  margin-top: 6%;
+  font-size: 12px;
+  font-size: calc(1.8cqw * var(--slide-scale, 1));
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  opacity: 0.6;
+}
+
+/* volledige afbeelding */
+.slideView .slideBg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.slideView .slideShade {
+  position: absolute;
+  inset: 0;
+  background: #04070f;
+}
+
+.slideView.layout-full .slideText {
+  max-width: 88%;
+}
+
+/* afbeelding links/rechts */
+.slideView .slideSplit {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  width: 100%;
+  height: 100%;
+  align-items: stretch;
+}
+
+.slideView .slideFigure {
+  margin: 0;
+  overflow: hidden;
+  background: #04070f;
+}
+
+.slideView .slideFigure .slideImg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.slideView .slideSplit .slideText {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  max-width: 100%;
+  align-self: center;
+}
+
+/* titel met bullets: iets breder en links */
+.slideView.layout-text .slideText {
+  max-width: 80%;
+}
+
+/* vrij canvas */
+.slideView .freeLayer {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+}
+.slideView .freeEl {
+  position: absolute;
+  overflow: hidden;
+}
+.slideView .freeText {
+  display: flex;
+  align-items: center;
+  padding: 0.45em 0.6em;
+  line-height: 1.28;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.slideView .freeImage img {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* vormen en tekststijlen op het vrije canvas */
+.slideView .freeShapeBox { display: block; }
+.slideView .freeShape { display: block; width: 100%; height: 100%; overflow: visible; }
+
+.slideView .freeBullets {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15em;
+}
+.slideView .freeBullets li {
+  position: relative;
+  padding-left: 1.05em;
+  overflow-wrap: anywhere;
+}
+.slideView .freeBullets li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.55em;
+  width: 0.32em;
+  height: 0.32em;
+  border-radius: 1px;
+  background: currentColor;
+  opacity: 0.85;
+}
+
+/* citaat */
+.slideView blockquote {
+  margin: 3% 0 0;
+  font-size: 26px;
+  font-size: calc(4.4cqw * var(--slide-scale, 1));
+  line-height: 1.28;
+  font-style: italic;
+  overflow-wrap: anywhere;
+}
+
+.slideView .quoteTitle {
+  font-size: 30px;
+  font-size: calc(5cqw * var(--slide-scale, 1));
+}
+
+.slideView .quoteBy {
+  margin: 4% 0 0;
+  font-size: 14px;
+  font-size: calc(2.2cqw * var(--slide-scale, 1));
+  opacity: 0.75;
+}

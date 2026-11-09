@@ -1,0 +1,121 @@
+html, body {
+  margin: 0;
+  height: 100%;
+  background: #000;
+  overflow: hidden;
+  cursor: none;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color: #fff;
+}
+
+#stage {
+  position: fixed;
+  inset: 0;
+  background: #000;
+}
+
+#stage .slide {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  opacity: 0;
+  transition: opacity .5s ease, transform .55s cubic-bezier(.4, 0, .2, 1), clip-path .55s cubic-bezier(.4, 0, .2, 1);
+  will-change: opacity, transform, clip-path;
+}
+#stage .slide.show { opacity: 1; }
+#stage.nofade .slide,
+#stage.nofade .slide.show { transition: none; }
+
+/* overgangen tussen dia's */
+#stage[data-t="push"] .slide { opacity: 1; transform: translateX(100%); }
+#stage[data-t="push"] .slide.show { transform: translateX(0); }
+#stage[data-t="push"] .slide.leaving { transform: translateX(-100%); }
+
+#stage[data-t="wipe"] .slide { opacity: 1; clip-path: inset(0 0 0 100%); }
+#stage[data-t="wipe"] .slide.show { clip-path: inset(0 0 0 0); z-index: 2; }
+#stage[data-t="wipe"] .slide.leaving { clip-path: inset(0 0 0 0); z-index: 1; }
+
+#stage[data-t="zoom"] .slide { transform: scale(.92); }
+#stage[data-t="zoom"] .slide.show { transform: scale(1); }
+#stage[data-t="zoom"] .slide.leaving { transform: scale(1.08); }
+
+/* elementanimaties: alleen op het echte scherm, niet in de preview */
+@keyframes sigAnimFade { from { opacity: 0; } }
+@keyframes sigAnimUp { from { opacity: 0; transform: translateY(2.4cqh); } }
+@keyframes sigAnimZoom { from { opacity: 0; transform: scale(.88); } }
+#stage .slide.show .freeEl[data-anim="fade"] {
+  animation: sigAnimFade .7s ease var(--anim-delay, 0s) both;
+}
+#stage .slide.show .freeEl[data-anim="up"] {
+  animation: sigAnimUp .7s cubic-bezier(.2, .7, .3, 1) var(--anim-delay, 0s) both;
+}
+#stage .slide.show .freeEl[data-anim="zoom"] {
+  animation: sigAnimZoom .7s cubic-bezier(.2, .7, .3, 1) var(--anim-delay, 0s) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  #stage .slide.show .freeEl[data-anim] { animation: none; }
+}
+#stage .slide.fill { display: block; }
+.slideHolder { width: 100%; height: 100%; }
+
+/* klein lampje linksonder: oranje = geen verbinding met de zender, speelt lokaal door */
+.conn {
+  position: fixed;
+  left: 14px;
+  bottom: 14px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #3ddc97;
+  opacity: .18;
+  z-index: 5;
+  transition: opacity .3s, background .3s;
+}
+.conn.off { background: #ffa94d; opacity: .75; }
+
+#stage img,
+#stage video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #000;
+}
+#stage.cover img,
+#stage.cover video { object-fit: cover; }
+
+#stage iframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: #fff;
+}
+
+#stage .missing {
+  font-size: 22px;
+  color: #ff8f8f;
+  text-align: center;
+  padding: 40px;
+}
+
+.idle {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(circle at 50% 40%, #16203a, #05070f 70%);
+  text-align: center;
+  padding: 40px;
+}
+.idle-box h1 { font-size: 34px; margin: 0 0 10px; font-weight: 600; letter-spacing: -.01em; }
+.idle-box p { margin: 0; color: #9aa7c7; font-size: 17px; max-width: 640px; line-height: 1.5; }
+.idle-box code { background: #101a30; padding: 2px 6px; border-radius: 6px; font-size: 15px; }
+
+.clock {
+  position: fixed;
+  right: 26px;
+  bottom: 18px;
+  font-size: 20px;
+  color: rgba(255, 255, 255, .55);
+  font-variant-numeric: tabular-nums;
+}
