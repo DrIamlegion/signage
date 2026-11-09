@@ -99,13 +99,73 @@ function renderUpdate(info) {
     $('#update-text').textContent = 'Versie ' + info.latest + ' is beschikbaar (je hebt ' + info.current + ').';
     const download = $('#update-download');
     if (download) download.href = info.assetUrl || info.url;
-    const notes = $('#update-notes');
-    if (notes) notes.href = info.url;
+    const notesBox = $('#update-notes');
+    const notes = String(info.notes || '').trim();
+    if (notesBox) {
+      notesBox.classList.toggle('hidden', !notes);
+      if (notes) {
+        renderReleaseNotes(notes);
+        notesBox.open = true;
+      }
+    }
   }
   document.documentElement.style.setProperty(
     '--banner-h',
     show ? banner.getBoundingClientRect().height + 'px' : '0px'
   );
+}
+
+function plainNoteText(value) {
+  return String(value || '')
+    .replace(/\*\*(.+?)\*\*/g, '$1')
+    .replace(/`([^`]+)`/g, '$1')
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1');
+}
+
+function renderReleaseNotes(markdown) {
+  const host = $('#update-notes-body');
+  if (!host) return;
+  host.textContent = '';
+  let list = null;
+  const closeList = () => {
+    if (!list) return;
+    host.appendChild(list);
+    list = null;
+  };
+
+  for (const raw of String(markdown || '').split(/\r?\n/)) {
+    const line = raw.trim();
+    if (!line) {
+      closeList();
+      continue;
+    }
+
+    const heading = /^#{1,6}\s+(.*)$/.exec(line);
+    if (heading) {
+      closeList();
+      const title = document.createElement('strong');
+      title.className = 'note-heading';
+      title.textContent = plainNoteText(heading[1]);
+      host.appendChild(title);
+      continue;
+    }
+
+    const bullet = /^(?:[-*]|\d+[.)])\s+(.*)$/.exec(line);
+    if (bullet) {
+      if (!list) list = document.createElement('ul');
+      const item = document.createElement('li');
+      item.textContent = plainNoteText(bullet[1]);
+      list.appendChild(item);
+      continue;
+    }
+
+    closeList();
+    const paragraph = document.createElement('p');
+    paragraph.textContent = plainNoteText(line);
+    host.appendChild(paragraph);
+  }
+
+  closeList();
 }
 
 async function loadUpdate(force = false) {

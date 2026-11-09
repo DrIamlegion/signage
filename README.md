@@ -195,7 +195,7 @@ Beide zetten het beheer op internet: wijzig dan eerst het wachtwoord in **Instel
 Voor Windows is er een native installer in Rust (`installer/`). Die is zelfstandig: de app
 (server + beheer + speler) zit in de executable, dus je hebt geen zip of Node-pakketten nodig.
 De kant-en-klare versie staat bij de **Releases** van deze repo
-(`Signage-Setup.exe`, 1.3.0); zelf bouwen kan met `installer\build.cmd`.
+(`Signage-Setup.exe`, 1.3.1); zelf bouwen kan met `installer\build.cmd`.
 
 Verwijderen gaat via **Start → Signage verwijderen**, *Apps en onderdelen* of
 `Signage-Setup.exe --uninstall`. De installer zoekt de bestaande installatie op — via een
@@ -209,9 +209,13 @@ verdwijnen alleen de app-bestanden.
 
 Bij het starten vraagt de server één keer de nieuwste release op bij
 `github.com/DrIamlegion/signage`. Is die nieuwer dan de draaiende versie, dan verschijnt in
-het beheer een banner met **Download installer** en **Wat is er nieuw?**; onder
-**Instellingen → Over** staat je versie en kun je zelf controleren. **Later** verbergt de
-banner tot de volgende versie.
+het beheer een banner met **Download installer** en daaronder de release-opmerkingen zelf,
+uitklapbaar en met dezelfde tekst als op GitHub — je hoeft dus niet naar GitHub om te lezen
+wat er veranderd is. Onder **Instellingen → Over** staat je versie en kun je zelf
+controleren. **Later** verbergt de banner tot de volgende versie. De ontvanger zelf toont
+bij de eerstvolgende start eenmalig een kleine melding **Nieuwe versie x.y.z beschikbaar**
+rechtsboven; die verdwijnt na twaalf seconden, blokkeert de playlist niet en verschijnt per
+versie maar één keer.
 
 De controle is bewust voorzichtig: geen internet of een geblokkeerde GitHub-API is geen
 fout — de app start gewoon door en probeert het later opnieuw (hooguit elke 10 minuten,

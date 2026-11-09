@@ -119,3 +119,26 @@ html, body {
   color: rgba(255, 255, 255, .55);
   font-variant-numeric: tabular-nums;
 }
+
+/* korte melding rechtsboven als er een nieuwe versie klaarstaat */
+.update-note {
+  position: fixed;
+  top: max(16px, env(safe-area-inset-top));
+  right: max(16px, env(safe-area-inset-right));
+  z-index: 6;
+  padding: 8px 13px;
+  border-radius: 999px;
+  background: rgba(12, 18, 32, .84);
+  border: 1px solid rgba(125, 190, 255, .35);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, .35);
+  color: #dce9ff;
+  font-size: 13px;
+  line-height: 1.3;
+  letter-spacing: .01em;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(-6px);
+  transition: opacity .4s ease, transform .4s ease;
+}
+.update-note.show { opacity: 1; transform: translateY(0); }
+.update-note.hidden { display: none; }

@@ -20,7 +20,7 @@ const MEDIA = path.join(DATA, 'media');
 const DB_FILE = path.join(DATA, 'db.json');
 const PORT = Number(process.env.PORT || 8100);
 const MAX_UPLOAD = 2 * 1024 * 1024 * 1024; // 2 GB
-const APP_VERSION = '1.3.0'; // houd gelijk aan installer/Cargo.toml
+const APP_VERSION = '1.3.1'; // houd gelijk aan installer/Cargo.toml
 const UPDATE_FEED =
   process.env.SIGNAGE_UPDATE_FEED || 'https://api.github.com/repos/DrIamlegion/signage/releases/latest';
 const UPDATE_TTL = 6 * 60 * 60 * 1000;
@@ -726,6 +726,18 @@ async function handle(req, res) {
 
   if ((p === '/player' || p === '/player/' || p === '/play') && method === 'GET') {
     return serveStatic(req, res, '/player.html');
+  }
+
+  /* Alleen versienummers, zodat ook de ontvanger (zonder login) een korte
+     melding kan tonen; de volledige release-info blijft achter de login. */
+  if (p === '/api/update/summary' && method === 'GET') {
+    const info = await checkForUpdate();
+    res.setHeader('Cache-Control', 'no-store');
+    return json(res, 200, {
+      current: info.current,
+      latest: info.latest,
+      available: Boolean(info.updateAvailable),
+    });
   }
 
   if (p === '/sw.js' || p === '/player.js' || p === '/player.css' || p === '/admin.js' || p === '/admin.css') {

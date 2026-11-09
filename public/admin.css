@@ -172,6 +172,30 @@ code { background: var(--panel-2); border: 1px solid var(--line); padding: 1px 5
 .update-banner .update-link.muted { color: var(--muted); font-weight: 500; }
 .update-banner .update-link:hover { text-decoration: underline; }
 .update-banner button { margin-left: auto; }
+.update-notes {
+  flex: 1 0 100%;
+  margin: 2px 0 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+.update-notes summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--accent-hover);
+}
+.update-notes-body {
+  max-height: 180px;
+  overflow: auto;
+  margin-top: 4px;
+  padding-right: 6px;
+  color: #3f3f46;
+}
+.update-notes-body p { margin: 0 0 6px; }
+.update-notes-body p:last-child { margin-bottom: 0; }
+.update-notes-body .note-heading { display: block; margin: 10px 0 4px; color: var(--text); }
+.update-notes-body .note-heading:first-child { margin-top: 0; }
+.update-notes-body ul { margin: 0 0 6px; padding-left: 18px; }
+.update-notes-body li { margin: 2px 0; }
 
 main { padding: 0; }
 .tabpane { display: none; }

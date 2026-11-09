@@ -15,6 +15,7 @@ const idle = document.getElementById('idle');
 const idleTitle = document.getElementById('idle-title');
 const idleText = document.getElementById('idle-text');
 const conn = document.getElementById('conn');
+const updateNote = document.getElementById('update-note');
 
 let payload = null;
 let items = [];
@@ -421,6 +422,39 @@ async function sync(first) {
   }
 }
 
+/* -------------------------------------------------------------- updatemelding */
+
+let noteTimer = null;
+
+/** Kleine, eenmalige melding per versie; nooit blokkerend voor de playlist. */
+async function checkUpdateNotice() {
+  if (!updateNote) return;
+  try {
+    const response = await fetch('/api/update/summary', { cache: 'no-store' });
+    if (!response.ok) return;
+    const info = await response.json();
+    if (!info || !info.available || !info.latest) return;
+    try {
+      if (localStorage.getItem('sig_update_seen') === info.latest) return;
+      localStorage.setItem('sig_update_seen', info.latest);
+    } catch {
+      /* opslag geweigerd: dan toch eenmalig tonen */
+    }
+    updateNote.textContent = 'Nieuwe versie ' + info.latest + ' beschikbaar';
+    updateNote.classList.remove('hidden');
+    // Reflow forceren zodat de fade ook start als de tab (net) weer zichtbaar wordt.
+    void updateNote.offsetWidth;
+    updateNote.classList.add('show');
+    clearTimeout(noteTimer);
+    noteTimer = setTimeout(() => {
+      updateNote.classList.remove('show');
+      noteTimer = setTimeout(() => updateNote.classList.add('hidden'), 500);
+    }, 12000);
+  } catch {
+    /* offline of geen zender: geen melding */
+  }
+}
+
 /* ---------------------------------------------------------------- volledig scherm */
 
 function goFullscreen() {
@@ -470,6 +504,8 @@ async function start() {
   }
 
   await sync(!payload);
+  checkUpdateNotice();
+  setInterval(checkUpdateNotice, 6 * 60 * 60 * 1000);
 
   setInterval(() => {
     if (document.visibilityState === 'visible') sync(false);
