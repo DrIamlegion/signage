@@ -386,6 +386,11 @@ fn install(opts: &Opts) -> Result<Report, String> {
         let _ = unregister_autostart();
     }
 
+    // onthoud waar we geïnstalleerd hebben, ook als de registersleutel ontbreekt
+    fs::create_dir_all(config_dir()).map_err(|e| format!("configuratiemap aanmaken: {e}"))?;
+    fs::write(config_dir().join("install.txt"), win_path(&root))
+        .map_err(|e| format!("installatiepad opslaan: {e}"))?;
+
     Ok(Report { root, files, bytes })
 }
 
@@ -769,9 +774,77 @@ fn stop() -> Result<(), String> {
 
 /* ---------------------------------------------------------------- verwijderen */
 
+fn is_installation(root: &Path) -> bool {
+    root.join("app").join("server.js").is_file()
+}
+
+fn recorded_root() -> Option<PathBuf> {
+    let raw = fs::read_to_string(config_dir().join("install.txt")).ok()?;
+    let root = PathBuf::from(raw.trim());
+    if is_installation(&root) {
+        Some(root)
+    } else {
+        None
+    }
+}
+
+fn registry_root() -> Option<PathBuf> {
+    let hkcu = RegKey::predef(HKEY_CURRENT_USER);
+    let key = hkcu
+        .open_subkey(format!(
+            r"Software\Microsoft\Windows\CurrentVersion\Uninstall\{APP_NAME}"
+        ))
+        .ok()?;
+    let value: String = key.get_value("InstallLocation").ok()?;
+    let root = PathBuf::from(value);
+    if is_installation(&root) {
+        Some(root)
+    } else {
+        None
+    }
+}
+
+/// Zoekt de echte installatie. De map van de setup zelf is nooit een kandidaat
+/// tenzij daar toevallig een volledige installatie in staat.
+fn uninstall_root(opts: &Opts) -> Result<PathBuf, String> {
+    let mut candidates: Vec<PathBuf> = Vec::new();
+    if let Some(dir) = &opts.dir {
+        candidates.push(dir.clone());
+    }
+    if let Some(dir) = recorded_root() {
+        candidates.push(dir);
+    }
+    if let Some(dir) = registry_root() {
+        candidates.push(dir);
+    }
+    candidates.push(default_root());
+    if let Ok(exe) = env::current_exe() {
+        if let Some(dir) = exe.parent() {
+            candidates.push(dir.to_path_buf());
+        }
+    }
+
+    for candidate in candidates {
+        if is_installation(&candidate) {
+            return Ok(candidate);
+        }
+    }
+
+    Err(format!(
+        "Geen bestaande {APP_NAME}-installatie gevonden.\n\nDe map van deze setup is niet aangeraakt ({}).\nGebruik --dir <pad> als je Signage ergens anders hebt geïnstalleerd.",
+        exe_root().display()
+    ))
+}
+
 fn uninstall(opts: &Opts) -> Result<String, String> {
-    let root = opts.dir.clone().unwrap_or_else(exe_root);
+    let root = uninstall_root(opts)?;
     let current = env::current_exe().map_err(|e| format!("eigen pad bepalen: {e}"))?;
+    let current_canonical = fs::canonicalize(&current).ok();
+    let root_canonical = fs::canonicalize(&root).unwrap_or_else(|_| root.clone());
+    let mut setup_inside = current_canonical
+        .as_ref()
+        .map(|path| path.starts_with(&root_canonical))
+        .unwrap_or(false);
 
     let _ = stop();
 
@@ -789,6 +862,7 @@ fn uninstall(opts: &Opts) -> Result<String, String> {
     let _ = unregister_autostart();
     let _ = fs::remove_file(config_dir().join("node.txt"));
     let _ = fs::remove_file(config_dir().join("server.pid"));
+    let _ = fs::remove_file(config_dir().join("install.txt"));
 
     if opts.remove_data {
         let _ = fs::remove_dir_all(data_dir());
@@ -801,14 +875,34 @@ fn uninstall(opts: &Opts) -> Result<String, String> {
             Err(_) => continue,
         };
         let path = entry.path();
-        if path == current {
+
+        // nooit het bestand verwijderen waarmee we nu draaien
+        if current_canonical.is_some() && fs::canonicalize(&path).ok() == current_canonical {
+            setup_inside = true;
             continue;
         }
+
         if path.is_dir() {
+            let dir_canonical = fs::canonicalize(&path).ok();
+            let holds_setup = match (&dir_canonical, &current_canonical) {
+                (Some(dir), Some(exe)) => exe.starts_with(dir),
+                _ => false,
+            };
+            if holds_setup {
+                setup_inside = true;
+                continue;
+            }
             let _ = fs::remove_dir_all(&path);
         } else {
             let _ = fs::remove_file(&path);
         }
+    }
+
+    if setup_inside {
+        return Ok(format!(
+            "{} (de map met deze setup is blijven staan)",
+            root.display()
+        ));
     }
 
     schedule_removal(&root);
@@ -832,6 +926,9 @@ Gebruik:
   Signage-Setup.exe --uninstall         verwijderen (gegevens blijven)
   Signage-Setup.exe --uninstall --remove-data --silent
                                         alles verwijderen, inclusief gegevens
+
+  Verwijderen zoekt de bestaande installatie op en ruimt alleen die map op.
+  De map waarin deze setup staat (bijvoorbeeld je downloadmap) blijft altijd staan.
   Signage-Setup.exe --help              deze uitleg
 
   Signage-Setup.exe --firewall          firewall-regel voor poort 8100 toevoegen

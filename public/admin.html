@@ -23,6 +23,14 @@
   </div>
 </header>
 
+<div id="update-banner" class="update-banner hidden" role="status">
+  <span class="update-dot" aria-hidden="true">↑</span>
+  <span id="update-text"></span>
+  <a id="update-download" class="update-link" href="https://github.com/DrIamlegion/signage/releases/latest" target="_blank" rel="noreferrer">Download installer</a>
+  <a id="update-notes" class="update-link muted" href="https://github.com/DrIamlegion/signage/releases/latest" target="_blank" rel="noreferrer">Wat is er nieuw?</a>
+  <button id="update-later" class="ghost small" type="button">Later</button>
+</div>
+
 <main>
   <!-- SCHERMEN -->
   <section id="tab-screens" class="tabpane active">
@@ -552,6 +560,12 @@
     <div class="card">
       <h3>Over</h3>
       <p class="muted small">Signage is een kleine zelf-gehoste signage-app. Geen account, geen abonnement, geen reclame — alleen je eigen server en je eigen schermen.</p>
+      <p class="muted small">Versie <strong id="app-version">onbekend</strong> ·
+        <a href="https://github.com/DrIamlegion/signage/releases" target="_blank" rel="noreferrer">Releases op GitHub</a>
+      </p>
+      <div class="row">
+        <button id="check-update" class="ghost" type="button">Controleren op updates</button>
+      </div>
     </div>
   </section>
 </main>

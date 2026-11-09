@@ -20,6 +20,12 @@ const MEDIA = path.join(DATA, 'media');
 const DB_FILE = path.join(DATA, 'db.json');
 const PORT = Number(process.env.PORT || 8100);
 const MAX_UPLOAD = 2 * 1024 * 1024 * 1024; // 2 GB
+const APP_VERSION = '1.3.0'; // houd gelijk aan installer/Cargo.toml
+const UPDATE_FEED =
+  process.env.SIGNAGE_UPDATE_FEED || 'https://api.github.com/repos/DrIamlegion/signage/releases/latest';
+const UPDATE_TTL = 6 * 60 * 60 * 1000;
+const UPDATE_ERROR_TTL = 10 * 60 * 1000;
+let updateCache = { at: 0, data: null };
 
 for (const dir of [DATA, MEDIA]) fs.mkdirSync(dir, { recursive: true });
 
@@ -162,6 +168,72 @@ function cookies(req) {
 
 function isAuthed(req) {
   return cookies(req).sig === sessionToken();
+}
+
+/* ------------------------------------------------------------- updates */
+
+function versionParts(value) {
+  const match = String(value || '')
+    .trim()
+    .replace(/^v/i, '')
+    .match(/^(\d+)\.(\d+)\.(\d+)/);
+  return match ? match.slice(1).map(Number) : null;
+}
+
+function isNewerVersion(latest, current) {
+  const next = versionParts(latest);
+  const have = versionParts(current);
+  if (!next || !have) return false;
+  for (let i = 0; i < 3; i += 1) {
+    if (next[i] !== have[i]) return next[i] > have[i];
+  }
+  return false;
+}
+
+async function checkForUpdate(force = false) {
+  const now = Date.now();
+  const ttl = updateCache.data && updateCache.data.error ? UPDATE_ERROR_TTL : UPDATE_TTL;
+  if (!force && updateCache.data && now - updateCache.at < ttl) return updateCache.data;
+
+  const result = {
+    current: APP_VERSION,
+    latest: null,
+    updateAvailable: false,
+    url: 'https://github.com/DrIamlegion/signage/releases/latest',
+    assetUrl: null,
+    notes: '',
+    publishedAt: null,
+    error: null,
+    checkedAt: new Date(now).toISOString(),
+  };
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 4000);
+  try {
+    const response = await fetch(UPDATE_FEED, {
+      signal: controller.signal,
+      headers: { accept: 'application/vnd.github+json', 'user-agent': 'Signage/' + APP_VERSION },
+    });
+    if (!response.ok) throw new Error('HTTP ' + response.status);
+    const release = await response.json();
+    const tag = String(release.tag_name || release.tag || '');
+    result.latest = tag.replace(/^v/i, '') || null;
+    result.url = release.html_url || result.url;
+    result.notes = typeof release.body === 'string' ? release.body.slice(0, 4000) : '';
+    result.publishedAt = release.published_at || null;
+    const asset = Array.isArray(release.assets)
+      ? release.assets.find((item) => /\.exe$/i.test(item.name || ''))
+      : null;
+    result.assetUrl = asset ? asset.browser_download_url : null;
+    result.updateAvailable = Boolean(result.latest && isNewerVersion(result.latest, APP_VERSION));
+  } catch (err) {
+    result.error = err && err.name === 'AbortError' ? 'timeout' : String((err && err.message) || err);
+  } finally {
+    clearTimeout(timer);
+  }
+
+  updateCache = { at: now, data: result };
+  return result;
 }
 
 function lanUrls() {
@@ -690,6 +762,10 @@ async function handle(req, res) {
 
   if (p === '/api/state' && method === 'GET') return json(res, 200, publicState());
 
+  if (p === '/api/update' && method === 'GET') {
+    return json(res, 200, await checkForUpdate(url.searchParams.get('force') === '1'));
+  }
+
   if (p === '/api/password' && method === 'POST') {
     const body = await readJson(req);
     if (!body.password || String(body.password).length < 6) {
@@ -927,4 +1003,13 @@ server.listen(PORT, '0.0.0.0', () => {
   for (const u of urls) console.log(`    netwerk    ${u}`);
   console.log('\n  Beheer:  ' + (urls[0] || `http://localhost:${PORT}`) + '/');
   console.log('  Stop met Ctrl+C\n');
+
+  checkForUpdate()
+    .then((info) => {
+      if (info.updateAvailable) {
+        console.log(`  Nieuwe versie beschikbaar: ${info.latest} (nu ${APP_VERSION})`);
+        console.log(`  ${info.url}\n`);
+      }
+    })
+    .catch(() => {});
 });

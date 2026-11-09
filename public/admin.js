@@ -78,7 +78,66 @@ async function refresh() {
   if (selectedId && !state.screens.some((s) => s.id === selectedId)) selectedId = null;
   if (!selectedId && state.screens.length) selectedId = state.screens[0].id;
   render();
+  if (!updateChecked) {
+    updateChecked = true;
+    loadUpdate();
+  }
 }
+
+/* ------------------------------------------------------------- updates */
+
+let updateChecked = false;
+
+function renderUpdate(info) {
+  const banner = $('#update-banner');
+  if ($('#app-version')) $('#app-version').textContent = info.current || 'onbekend';
+  if (!banner) return;
+  const skip = localStorage.getItem('sig_update_skip');
+  const show = Boolean(info.updateAvailable) && info.latest !== skip;
+  banner.classList.toggle('hidden', !show);
+  if (show) {
+    $('#update-text').textContent = 'Versie ' + info.latest + ' is beschikbaar (je hebt ' + info.current + ').';
+    const download = $('#update-download');
+    if (download) download.href = info.assetUrl || info.url;
+    const notes = $('#update-notes');
+    if (notes) notes.href = info.url;
+  }
+  document.documentElement.style.setProperty(
+    '--banner-h',
+    show ? banner.getBoundingClientRect().height + 'px' : '0px'
+  );
+}
+
+async function loadUpdate(force = false) {
+  try {
+    const response = await fetch('/api/update' + (force ? '?force=1' : ''), { credentials: 'same-origin' });
+    if (!response.ok) throw new Error('Geen update-informatie');
+    const info = await response.json();
+    renderUpdate(info);
+    if (force) {
+      if (info.error) toast('Kon de updatecontrole niet bereiken. Probeer het later opnieuw.', true);
+      else if (info.updateAvailable) toast('Versie ' + info.latest + ' is beschikbaar');
+      else toast('Je hebt de nieuwste versie (' + info.current + ')');
+    }
+    return info;
+  } catch (err) {
+    if (force) toast(err.message, true);
+    return null;
+  }
+}
+
+const updateLater = $('#update-later');
+if (updateLater) {
+  updateLater.addEventListener('click', () => {
+    const match = /Versie ([\w.]+) is beschikbaar/.exec($('#update-text').textContent || '');
+    if (match) localStorage.setItem('sig_update_skip', match[1]);
+    $('#update-banner').classList.add('hidden');
+    document.documentElement.style.setProperty('--banner-h', '0px');
+  });
+}
+
+const checkUpdateButton = $('#check-update');
+if (checkUpdateButton) checkUpdateButton.addEventListener('click', () => loadUpdate(true));
 
 function saveScreen(patch) {
   const id = selectedId;

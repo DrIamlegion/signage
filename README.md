@@ -195,7 +195,33 @@ Beide zetten het beheer op internet: wijzig dan eerst het wachtwoord in **Instel
 Voor Windows is er een native installer in Rust (`installer/`). Die is zelfstandig: de app
 (server + beheer + speler) zit in de executable, dus je hebt geen zip of Node-pakketten nodig.
 De kant-en-klare versie staat bij de **Releases** van deze repo
-(`Signage-Setup.exe`, 1.2.0); zelf bouwen kan met `installer\build.cmd`.
+(`Signage-Setup.exe`, 1.3.0); zelf bouwen kan met `installer\build.cmd`.
+
+Verwijderen gaat via **Start → Signage verwijderen**, *Apps en onderdelen* of
+`Signage-Setup.exe --uninstall`. De installer zoekt de bestaande installatie op — via een
+expliciete `--dir`, het bij de installatie bewaarde pad, de registersleutel of de
+standaardmap — en controleert eerst of daar echt `app\server.js` staat. De map waarin de
+setup zelf staat (je downloadmap bijvoorbeeld) wordt nooit opgeruimd. Staat de setup
+toevallig in de installatiemap, dan blijven die map en het setup-bestand staan en
+verdwijnen alleen de app-bestanden.
+
+## Updates
+
+Bij het starten vraagt de server één keer de nieuwste release op bij
+`github.com/DrIamlegion/signage`. Is die nieuwer dan de draaiende versie, dan verschijnt in
+het beheer een banner met **Download installer** en **Wat is er nieuw?**; onder
+**Instellingen → Over** staat je versie en kun je zelf controleren. **Later** verbergt de
+banner tot de volgende versie.
+
+De controle is bewust voorzichtig: geen internet of een geblokkeerde GitHub-API is geen
+fout — de app start gewoon door en probeert het later opnieuw (hooguit elke 10 minuten,
+anders elke 6 uur). Er wordt niets automatisch gedownload of geïnstalleerd; je kiest zelf
+wanneer je de nieuwe setup uitvoert. Voor een eigen mirror of testomgeving kun je de
+voedings-URL overschrijven:
+
+```bash
+SIGNAGE_UPDATE_FEED="https://mijn-server/release.json" node server.js
+```
 
 1. Dubbelklik `Signage-Setup.exe`.
 2. Bevestig de installatiemap en eventueel een bureaubladsnelkoppeling.
