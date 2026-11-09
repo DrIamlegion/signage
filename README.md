@@ -7,11 +7,13 @@ playlist in de browser. Geen account, geen abonnement, geen reclame — alleen N
 - **Beheer**: één webpagina met schermen, playlists, planning en media.
 - **Speler (ontvanger)**: gewone webpagina die fullscreen werkt, installeerbaar is als app
   (PWA) en blijft doorspelen als de zender of het netwerk wegvalt.
-- **Presentatiebouwer**: bouw presentaties met meerdere slides, zeven lay-outs (waaronder
-  een vrij canvas), bullets,
-  eigen duur en overgang per presentatie — naast geüploade bestanden, Google Presentaties en
+- **Presentatiebouwer**: bouw presentaties met meerdere slides in een PowerPoint-achtig lint
+  (Start, Invoegen, Ontwerp, Animaties): zeven lay-outs, vrij canvas met vormen, tekststijlen,
+  verlopen, elementanimaties en overgangen — naast geüploade bestanden, Google Presentaties en
   andere webpagina's.
 - **Kosten**: €0. Geen dependencies, geen cloud; het draait op je eigen computer.
+
+![De presentatiebouwer met het lint en het opmaakpaneel](docs/editor.png)
 
 ## Zender en ontvanger
 
@@ -169,6 +171,8 @@ Beide zetten het beheer op internet: wijzig dan eerst het wachtwoord in **Instel
 
 Voor Windows is er een native installer in Rust (`installer/`). Die is zelfstandig: de app
 (server + beheer + speler) zit in de executable, dus je hebt geen zip of Node-pakketten nodig.
+De kant-en-klare versie staat bij de **Releases** van deze repo
+(`Signage-Setup.exe`, 1.1.0); zelf bouwen kan met `installer\build.cmd`.
 
 1. Dubbelklik `Signage-Setup.exe`.
 2. Bevestig de installatiemap en eventueel een bureaubladsnelkoppeling.
