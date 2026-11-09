@@ -1,8 +1,8 @@
 IDI_SIGNAGE ICON "assets/Signage.ico"
 
 1 VERSIONINFO
-FILEVERSION 1,1,0,0
-PRODUCTVERSION 1,1,0,0
+FILEVERSION 1,2,0,0
+PRODUCTVERSION 1,2,0,0
 FILEFLAGSMASK 0x3fL
 FILEFLAGS 0x0L
 FILEOS 0x40004L
@@ -15,12 +15,12 @@ BEGIN
     BEGIN
       VALUE "CompanyName", "Signage"
       VALUE "FileDescription", "Signage - digitale signage (installer en launcher)"
-      VALUE "FileVersion", "1.1.0"
+      VALUE "FileVersion", "1.2.0"
       VALUE "InternalName", "Signage"
       VALUE "LegalCopyright", "Gratis en zelf-gehost"
       VALUE "OriginalFilename", "Signage-Setup.exe"
       VALUE "ProductName", "Signage"
-      VALUE "ProductVersion", "1.1.0"
+      VALUE "ProductVersion", "1.2.0"
     END
   END
   BLOCK "VarFileInfo"

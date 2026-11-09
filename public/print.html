@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Presentatie afdrukken</title>
+<link rel="stylesheet" href="/slide-render.css">
+<style>
+  html, body { margin: 0; background: #f5f6f8; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: #111827; }
+  .bar { position: sticky; top: 0; z-index: 2; display: flex; gap: 10px; align-items: center; padding: 10px 16px; background: #fff; border-bottom: 1px solid #e5e7eb; }
+  .bar h1 { margin: 0 auto 0 0; font-size: 15px; font-weight: 600; }
+  .bar button { font: inherit; font-size: 13px; padding: 7px 14px; border-radius: 6px; border: 1px solid #d1d5db; background: #fff; cursor: pointer; }
+  .bar button.primary { background: #e8622c; border-color: #e8622c; color: #fff; font-weight: 600; }
+  .bar button:hover { filter: brightness(.97); }
+  .tip { margin: 0; padding: 10px 24px; font-size: 12.5px; color: #4b5563; }
+  .deck { display: flex; flex-direction: column; gap: 26px; padding: 8px 24px 40px; align-items: center; }
+  .page { position: relative; width: min(100%, 960px); background: #000; box-shadow: 0 2px 12px rgba(15, 23, 42, .18); }
+  .page .holder { position: absolute; inset: 0; }
+  .note { width: min(100%, 960px); margin: -16px 0 0; color: #4b5563; font-size: 12.5px; line-height: 1.55; }
+  .empty { padding: 48px 24px; text-align: center; color: #4b5563; }
+  @media print {
+    html, body { background: #fff; }
+    .bar, .tip, .note { display: none !important; }
+    .deck { display: block; padding: 0; gap: 0; }
+    .page { width: 100%; max-width: none; box-shadow: none; break-after: page; page-break-after: always; }
+    .page:last-child { break-after: auto; page-break-after: auto; }
+    @page { margin: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="bar">
+  <h1 id="title">Presentatie</h1>
+  <button id="print" class="primary" type="button">Afdrukken / opslaan als PDF</button>
+  <button id="close" type="button">Sluiten</button>
+</div>
+<p class="tip">Kies in het afdrukvenster &quot;Opslaan als PDF&quot; om de presentatie te bewaren. Elke zichtbare dia wordt één pagina.</p>
+<div id="deck" class="deck"><p class="empty">Laden…</p></div>
+<script src="/slide-render.js"></script>
+<script>
+(async () => {
+  const deckBox = document.getElementById('deck');
+  const id = new URLSearchParams(location.search).get('deck');
+
+  function fail(message) {
+    deckBox.innerHTML = '';
+    const note = document.createElement('p');
+    note.className = 'empty';
+    note.textContent = message;
+    deckBox.appendChild(note);
+  }
+
+  try {
+    const response = await fetch('/api/state', { credentials: 'same-origin' });
+    if (!response.ok) throw new Error('auth');
+    const state = await response.json();
+    const deck = (state.presentations || []).find((item) => item.id === id);
+    if (!deck) throw new Error('missing');
+
+    document.getElementById('title').textContent = deck.name;
+    const parts = (deck.aspect || '16:9').split(':').map(Number);
+    const ratio = parts[0] && parts[1] ? parts[0] / parts[1] : 16 / 9;
+    deckBox.innerHTML = '';
+
+    for (const slide of (deck.slides || []).filter((item) => !item.hidden)) {
+      const page = document.createElement('div');
+      page.className = 'page';
+      page.style.aspectRatio = String(ratio);
+      const holder = document.createElement('div');
+      holder.className = 'holder';
+      page.appendChild(holder);
+      deckBox.appendChild(page);
+      window.SlideRender.render(slide, holder);
+      if (slide.notes) {
+        const note = document.createElement('p');
+        note.className = 'note';
+        note.textContent = slide.notes;
+        deckBox.appendChild(note);
+      }
+    }
+
+    if (!deckBox.children.length) fail('Deze presentatie heeft geen zichtbare dia\'s.');
+    document.title = deck.name + ' — afdrukken';
+  } catch (err) {
+    fail(err.message === 'missing'
+      ? 'Deze presentatie bestaat niet meer.'
+      : 'Kon de presentatie niet laden. Log eerst in bij het beheer en open deze pagina opnieuw.');
+  }
+
+  document.getElementById('print').addEventListener('click', () => window.print());
+  document.getElementById('close').addEventListener('click', () => window.close());
+})();
+</script>
+</body>
+</html>

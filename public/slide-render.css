@@ -161,6 +161,7 @@
 .slideView .freeEl {
   position: absolute;
   overflow: hidden;
+  transform-origin: 50% 50%;
 }
 .slideView .freeText {
   display: flex;

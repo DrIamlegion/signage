@@ -726,7 +726,7 @@ function renderSlideStrip() {
 
   deck.slides.forEach((slide, index) => {
     const cell = document.createElement('div');
-    cell.className = 'strip-cell' + (index === deckSlideIndex ? ' active' : '');
+    cell.className = 'strip-cell' + (index === deckSlideIndex ? ' active' : '') + (slide.hidden ? ' is-hidden' : '');
 
     const thumb = document.createElement('div');
     thumb.className = 'strip-thumb';
@@ -812,6 +812,9 @@ function fillSlideForm(slide) {
   $('#slide-bg2-on').checked = !!slide.bg2;
   $('#slide-bg2').value = slide.bg2 || '#1d4ed8';
   $('#slide-notes').value = slide.notes || '';
+  $('#slide-transition').value = slide.transition || '';
+  $('#slide-hidden').checked = !!slide.hidden;
+  $('#slide-font').value = slide.font || 'sans';
 
   const imageSelect = $('#slide-image');
   const chosen = slide.imageId || '';
@@ -846,6 +849,9 @@ function slideFormValues() {
     bg2: $('#slide-bg2-on').checked ? $('#slide-bg2').value : null,
     bgAngle: Number($('#slide-bg-angle').value) || 135,
     notes: $('#slide-notes').value,
+    transition: $('#slide-transition').value,
+    hidden: $('#slide-hidden').checked,
+    font: $('#slide-font').value,
     imageId: $('#slide-image').value || null,
     shade: Number($('#slide-shade').value) / 100,
     align: $('#slide-align').value,
@@ -864,6 +870,7 @@ function updateSlidePreview() {
     imageUrl: media ? '/media/' + encodeURIComponent(media.file) : null,
   });
   window.SlideRender.render(spec, box);
+  fitPreview();
   if (values.layout === 'free') {
     attachCanvas(box, spec);
     syncElementPos();
@@ -882,8 +889,11 @@ function syncDeckForm() {
     $('#deck-name').value = deck.name;
     $('#deck-duration').value = deck.duration;
     $('#deck-transition').value = deck.transition || 'fade';
+    if ($('#deck-aspect')) $('#deck-aspect').value = deck.aspect || '16:9';
     formDeckId = deck.id;
   }
+
+  applyAspect();
 
   const slide = currentDeckSlide();
   if (!slide) return;
@@ -1176,6 +1186,11 @@ function renderElementInspector() {
   $('#el-stroke').value = hasStroke ? element.stroke : '#f8fafc';
   $('#el-stroke-on').checked = !!hasStroke;
   $('#el-stroke-width').value = String(element.strokeWidth || 0);
+  if ($('#el-rotation')) $('#el-rotation').value = String(Math.round(element.rotation || 0));
+  if ($('#el-font')) $('#el-font').value = element.font || 'sans';
+  if ($('#el-shadow')) $('#el-shadow').checked = !!element.shadow;
+  if ($('#el-flip-x')) $('#el-flip-x').checked = !!element.flipX;
+  if ($('#el-flip-y')) $('#el-flip-y').checked = !!element.flipY;
 
   const imageSelect = $('#el-image');
   const chosen = element.imageId || '';
@@ -1339,13 +1354,29 @@ $('#add-image-el').addEventListener('click', () => addFreeElement('image'));
 $('#add-shape-el').addEventListener('click', () => addFreeElement('shape'));
 $('#add-line-el').addEventListener('click', () => addFreeElement('line'));
 
-$('#delete-el').addEventListener('click', () => {
+function removeSelectedElement() {
   if (!selectedElementId) return toast('Selecteer eerst een element in de dia', true);
   draftElements = draftElements.filter((element) => element.id !== selectedElementId);
   selectedElementId = null;
   renderElementInspector();
   updateSlidePreview();
-});
+}
+
+function duplicateSelectedElement() {
+  const element = selectedElement();
+  if (!element) return toast('Selecteer eerst een element in de dia', true);
+  const copy = Object.assign({}, element, {
+    id: Math.random().toString(36).slice(2, 8),
+    x: Math.min(100 - element.w, element.x + 3),
+    y: Math.min(100 - element.h, element.y + 3),
+  });
+  draftElements.push(copy);
+  selectedElementId = copy.id;
+  renderElementInspector();
+  updateSlidePreview();
+}
+
+$('#delete-el').addEventListener('click', removeSelectedElement);
 
 function reorderElement(delta) {
   const index = draftElements.findIndex((element) => element.id === selectedElementId);
@@ -1404,6 +1435,8 @@ onElementInput('#el-anim', 'change', (element, input) => { element.anim = input.
 onElementInput('#el-delay', 'input', (element, input) => {
   element.delay = Math.min(20, Math.max(0, Number(input.value) || 0));
 });
+onElementInput('#el-rotation', 'input', (element, input) => { element.rotation = Number(input.value) || 0; });
+onElementInput('#el-font', 'change', (element, input) => { element.font = input.value; });
 
 function bindToggle(selector, apply) {
   const input = $(selector);
@@ -1425,6 +1458,9 @@ bindToggle('#el-fill-on', (element, on) => {
 bindToggle('#el-stroke-on', (element, on) => {
   element.stroke = on ? $('#el-stroke').value : 'transparent';
 });
+bindToggle('#el-shadow', (element, on) => { element.shadow = on; });
+bindToggle('#el-flip-x', (element, on) => { element.flipX = on; });
+bindToggle('#el-flip-y', (element, on) => { element.flipY = on; });
 
 function alignElement(mode) {
   const element = selectedElement();
@@ -1445,21 +1481,7 @@ document.querySelectorAll('[data-el-align]').forEach((button) => {
 });
 
 const duplicateEl = $('#duplicate-el');
-if (duplicateEl) {
-  duplicateEl.addEventListener('click', () => {
-    const element = selectedElement();
-    if (!element) return toast('Selecteer eerst een element in de dia', true);
-    const copy = Object.assign({}, element, {
-      id: Math.random().toString(36).slice(2, 8),
-      x: Math.min(100 - element.w, element.x + 3),
-      y: Math.min(100 - element.h, element.y + 3),
-    });
-    draftElements.push(copy);
-    selectedElementId = copy.id;
-    renderElementInspector();
-    updateSlidePreview();
-  });
-}
+if (duplicateEl) duplicateEl.addEventListener('click', duplicateSelectedElement);
 
 const bgToggle = $('#el-bg-on');
 if (bgToggle) {
@@ -1505,8 +1527,143 @@ document.querySelectorAll('[data-format]').forEach((button) => {
   button.addEventListener('click', () => applyFormat(button.getAttribute('data-format')));
 });
 
+/* ------------------------------------------------ diaformaat en thema's */
+
+const THEMES = [
+  { name: 'Middernacht', bg: '#0b1c3a', fg: '#f8fafc', accent: '#5b8cff', bg2: '#1d4ed8' },
+  { name: 'Papier', bg: '#f6f2ea', fg: '#1f2430', accent: '#e8622c', bg2: '#f0d7c2' },
+  { name: 'Zwart-wit', bg: '#0b0b0c', fg: '#ffffff', accent: '#ffffff', bg2: '#2a2a2e' },
+  { name: 'Oranje', bg: '#1a1006', fg: '#fff7ed', accent: '#e8622c', bg2: '#7c2d12' },
+  { name: 'Bos', bg: '#0d2118', fg: '#ecfdf5', accent: '#34d399', bg2: '#065f46' },
+  { name: 'Poeder', bg: '#eef2ff', fg: '#1e1b4b', accent: '#6366f1', bg2: '#c7d2fe' },
+];
+
+function renderThemes() {
+  const host = $('#theme-list');
+  if (!host || host.childElementCount) return;
+  for (const theme of THEMES) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'theme-swatch';
+    button.title = 'Thema ' + theme.name;
+    button.setAttribute('aria-label', 'Thema ' + theme.name);
+    button.style.background = 'linear-gradient(135deg, ' + theme.bg + ' 0 55%, ' + theme.bg2 + ' 55% 100%)';
+    button.style.borderColor = theme.accent;
+    button.addEventListener('click', () => {
+      $('#slide-bg').value = theme.bg;
+      $('#slide-fg').value = theme.fg;
+      $('#slide-accent').value = theme.accent;
+      $('#slide-bg2').value = theme.bg2;
+      $('#slide-bg2-on').checked = true;
+      updateSlidePreview();
+    });
+    host.appendChild(button);
+  }
+}
+
+let currentAspectValue = '16:9';
+
+function aspectRatio() {
+  const [width, height] = currentAspectValue.split(':').map(Number);
+  return width && height ? width / height : 16 / 9;
+}
+
+function fitPreview() {
+  const preview = document.querySelector('.slide-preview');
+  const bench = document.querySelector('.canvas-bench');
+  if (!preview || !bench) return;
+  const styles = getComputedStyle(bench);
+  const padding = (parseFloat(styles.paddingLeft) || 0) + (parseFloat(styles.paddingRight) || 0);
+  const availableWidth = bench.clientWidth - padding;
+  if (availableWidth < 80) return;
+  const maxHeight = Math.max(220, window.innerHeight - bench.getBoundingClientRect().top - 140);
+  const ratio = aspectRatio();
+  let width = Math.min(availableWidth, 1040);
+  let height = width / ratio;
+  if (height > maxHeight) {
+    height = maxHeight;
+    width = height * ratio;
+  }
+  preview.style.width = Math.round(width) + 'px';
+  preview.style.height = Math.round(height) + 'px';
+}
+
+function applyAspect(value) {
+  const deck = currentDeck();
+  currentAspectValue = value || (deck && deck.aspect) || '16:9';
+  document.documentElement.style.setProperty('--slide-aspect', currentAspectValue.replace(':', ' / '));
+  fitPreview();
+}
+
+window.addEventListener('resize', fitPreview);
+
+const aspectSelect = $('#deck-aspect');
+if (aspectSelect) {
+  aspectSelect.addEventListener('change', () => {
+    applyAspect(aspectSelect.value);
+    patchDeck({ aspect: aspectSelect.value }).catch(() => {});
+  });
+}
+
+const printDeck = $('#print-deck');
+if (printDeck) {
+  printDeck.addEventListener('click', () => {
+    const deck = currentDeck();
+    if (!deck) return toast('Selecteer eerst een presentatie', true);
+    window.open('/print.html?deck=' + encodeURIComponent(deck.id), '_blank', 'noopener');
+  });
+}
+
+/* ---------------------------------------------------------- sneltoetsen */
+
+document.addEventListener('keydown', (event) => {
+  const target = event.target;
+  if (!target || target.isContentEditable) return;
+  if (/^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)) return;
+  if (!currentDeck() || $('#deck-editor').classList.contains('hidden')) return;
+
+  const element = selectedElement();
+  const key = event.key;
+
+  if ((event.ctrlKey || event.metaKey) && key.toLowerCase() === 'd') {
+    event.preventDefault();
+    if (element) duplicateSelectedElement();
+    else if ($('#duplicate-slide')) $('#duplicate-slide').click();
+    return;
+  }
+
+  if (key === 'Delete' || key === 'Backspace') {
+    if (!element) return;
+    event.preventDefault();
+    removeSelectedElement();
+    return;
+  }
+
+  if (key === 'Escape') {
+    if (!element) return;
+    selectedElementId = null;
+    renderElementInspector();
+    updateSlidePreview();
+    return;
+  }
+
+  const step = event.shiftKey ? 2 : 0.5;
+  const delta = {
+    ArrowLeft: [-step, 0],
+    ArrowRight: [step, 0],
+    ArrowUp: [0, -step],
+    ArrowDown: [0, step],
+  }[key];
+  if (!delta || !element) return;
+  event.preventDefault();
+  element.x = Math.round(clampPercent(element.x + delta[0], 0, 100 - element.w) * 10) / 10;
+  element.y = Math.round(clampPercent(element.y + delta[1], 0, 100 - element.h) * 10) / 10;
+  updateSlidePreview();
+});
+
 /* ---------------------------------------------------------------- start */
 
+renderThemes();
 refresh().catch(() => showLogin());
 
 setInterval(() => {

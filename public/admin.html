@@ -99,6 +99,10 @@
       <div class="doc-bar">
         <input id="deck-name" class="doc-title" maxlength="80" placeholder="Naam van de presentatie">
         <div class="doc-actions">
+          <button id="print-deck" class="ghost" type="button" title="Afdrukken of als PDF bewaren">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M7 9V3.5h10V9"/><rect x="3.5" y="9" width="17" height="8" rx="1.6"/><path d="M7 15h10v5.5H7z"/></svg>
+            PDF / afdrukken
+          </button>
           <button id="delete-deck" class="ghost danger">Verwijderen</button>
         </div>
       </div>
@@ -253,6 +257,37 @@
               </div>
               <div class="ribbon-label">Achtergrondverloop</div>
             </div>
+
+            <div class="ribbon-sep"></div>
+
+            <div class="ribbon-group">
+              <div class="ribbon-items" id="theme-list"></div>
+              <div class="ribbon-label">Thema's</div>
+            </div>
+
+            <div class="ribbon-sep"></div>
+
+            <div class="ribbon-group">
+              <div class="ribbon-items">
+                <label class="ribbon-field">Diaformaat
+                  <select id="deck-aspect">
+                    <option value="16:9">16:9 (breed)</option>
+                    <option value="4:3">4:3 (klassiek)</option>
+                    <option value="9:16">9:16 (staand)</option>
+                    <option value="1:1">1:1 (vierkant)</option>
+                  </select>
+                </label>
+                <label class="ribbon-field">Lettertype
+                  <select id="slide-font">
+                    <option value="sans">Sans</option>
+                    <option value="serif">Serif</option>
+                    <option value="mono">Mono</option>
+                    <option value="display">Display</option>
+                  </select>
+                </label>
+              </div>
+              <div class="ribbon-label">Dia en tekst</div>
+            </div>
           </div>
 
           <div class="ribbon-panel" data-ribbon-panel="anim" role="tabpanel">
@@ -275,8 +310,18 @@
 
             <div class="ribbon-group">
               <div class="ribbon-items">
-                <label class="ribbon-field">Overgang
+                <label class="ribbon-field">Overgang presentatie
                   <select id="deck-transition">
+                    <option value="fade">Vervagen</option>
+                    <option value="push">Opschuiven</option>
+                    <option value="wipe">Vegen</option>
+                    <option value="zoom">Inzoomen</option>
+                    <option value="none">Direct</option>
+                  </select>
+                </label>
+                <label class="ribbon-field">Deze dia
+                  <select id="slide-transition">
+                    <option value="">Zelfde als presentatie</option>
                     <option value="fade">Vervagen</option>
                     <option value="push">Opschuiven</option>
                     <option value="wipe">Vegen</option>
@@ -286,6 +331,7 @@
                 </label>
                 <label class="ribbon-field">Duur per dia<input type="number" id="slide-duration" min="1" max="600" placeholder="standaard"></label>
                 <label class="ribbon-field">Standaardduur<input type="number" id="deck-duration" min="1" max="600" step="1"></label>
+                <label class="ribbon-check"><input type="checkbox" id="slide-hidden"> Dia verbergen</label>
               </div>
               <div class="ribbon-label">Dia en overgang</div>
             </div>
@@ -400,6 +446,22 @@
                 </label>
               </div>
               <label class="field">Afbeelding<select id="el-image"><option value="">— geen —</option></select></label>
+              <div class="row halves">
+                <label class="field">Rotatie<input type="range" id="el-rotation" min="-180" max="180" step="5" value="0"></label>
+                <label class="field">Lettertype
+                  <select id="el-font">
+                    <option value="sans">Sans</option>
+                    <option value="serif">Serif</option>
+                    <option value="mono">Mono</option>
+                    <option value="display">Display</option>
+                  </select>
+                </label>
+              </div>
+              <div class="row">
+                <label class="check"><input type="checkbox" id="el-shadow"> Schaduw</label>
+                <label class="check"><input type="checkbox" id="el-flip-x"> Spiegelen ↔</label>
+                <label class="check"><input type="checkbox" id="el-flip-y"> Spiegelen ↕</label>
+              </div>
               <div class="row thirds shape-row">
                 <label class="field">Vorm
                   <select id="el-shape">

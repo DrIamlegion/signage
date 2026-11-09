@@ -97,6 +97,8 @@ het paneel eronder alles te zetten:
 - **Algemeen** — achtergrond, ronding, doorzichtigheid, afbeelding met vulling (vullen of
   passend), volgorde (naar voren/achteren), dupliceren, verwijderen en uitlijnen tegen de
   randen of het midden van de dia.
+- **Effecten** — rotatie (−180°…180°), spiegelen (horizontaal/verticaal), schaduw en een
+  lettertype: sans, serif, mono of display.
 - **Animatie** — vervagen, omhoog of inzoomen, met vertraging; die speelt alleen op het echte
   scherm, niet in de preview.
 
@@ -104,6 +106,27 @@ Alles staat in procenten van de dia, dus dezelfde slide klopt op een breed scher
 staand scherm; blokken blijven binnen het beeld en snappen op tienden van een procent.
 Wissel je van een vaste lay-out naar vrij canvas, dan wordt de titel als eerste tekstblok
 overgenomen.
+
+**Diaformaat en thema's.** Onder **Ontwerp** staat het diaformaat: 16:9 (breed), 4:3
+(klassiek), 9:16 (staand, voor een portret-scherm) of 1:1 (vierkant). De preview, de
+miniaturen en de PDF-uitvoer volgen dat formaat meteen. Zes thema's (Middernacht, Papier,
+Zwart-wit, Oranje, Bos, Poeder) zetten in één klik achtergrond, tekst, accent en verloop
+klaar; daarna pas je ze nog vrij aan met de kleurkiezers. Het lettertype van de dia kies je
+naast het formaat (sans, serif, mono of display).
+
+**Overgang per dia en verbergen.** Onder **Animaties** kies je de overgang van de hele
+presentatie én, apart, van deze ene dia (of *zelfde als presentatie*). Met **Dia verbergen**
+blijft een dia in de bouwer staan — handig als tussenstap — maar slaat de speler hem over;
+in de strip wordt hij lichter weergegeven. Duur, notities en overgang horen bij de dia en
+worden met **Slide bijwerken** bewaard.
+
+**Sneltoetsen.** Pijltjes verplaatsen het geselecteerde blok (0,5%, met Shift 2%),
+`Delete` verwijdert het, `Esc` deselecteert, `Ctrl+D` dupliceert een blok of, zonder
+selectie, de dia.
+
+**PDF en afdrukken.** Met **PDF / afdrukken** boven de dia opent een printbaar overzicht van
+alle zichtbare dia's, elk op een eigen pagina. Kies in het afdrukvenster *Opslaan als PDF*
+om er een PDF van te maken. Notities staan onder de dia en worden niet meegeprint.
 
 De preview ernaast is precies wat het scherm laat zien. Met **+ Naar scherm** zet je de hele
 presentatie in de playlist; de ontvanger speelt hem slide voor slide af en daarna gaat de
@@ -172,7 +195,7 @@ Beide zetten het beheer op internet: wijzig dan eerst het wachtwoord in **Instel
 Voor Windows is er een native installer in Rust (`installer/`). Die is zelfstandig: de app
 (server + beheer + speler) zit in de executable, dus je hebt geen zip of Node-pakketten nodig.
 De kant-en-klare versie staat bij de **Releases** van deze repo
-(`Signage-Setup.exe`, 1.1.0); zelf bouwen kan met `installer\build.cmd`.
+(`Signage-Setup.exe`, 1.2.0); zelf bouwen kan met `installer\build.cmd`.
 
 1. Dubbelklik `Signage-Setup.exe`.
 2. Bevestig de installatiemap en eventueel een bureaubladsnelkoppeling.

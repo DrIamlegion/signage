@@ -216,6 +216,9 @@ function isSlideLayout(value) {
 
 const SHAPES = ['rect', 'round', 'ellipse', 'triangle', 'line', 'arrow', 'star'];
 const ELEMENT_ANIMS = ['none', 'fade', 'up', 'zoom'];
+const FONTS = ['sans', 'serif', 'mono', 'display'];
+const ASPECTS = ['16:9', '4:3', '9:16', '1:1'];
+const SLIDE_TRANSITIONS = ['none', 'fade', 'push', 'wipe', 'zoom'];
 
 function normalizeElements(list) {
   const clamp = (value, min, max) => Math.min(max, Math.max(min, Number(value) || 0));
@@ -259,6 +262,11 @@ function normalizeElements(list) {
       fit: e.fit === 'contain' ? 'contain' : 'cover',
       anim: ELEMENT_ANIMS.includes(e.anim) ? e.anim : 'none',
       delay: clamp(e.delay, 0, 20),
+      font: FONTS.includes(e.font) ? e.font : 'sans',
+      rotation: Math.min(180, Math.max(-180, Number(e.rotation) || 0)),
+      flipX: !!e.flipX,
+      flipY: !!e.flipY,
+      shadow: !!e.shadow,
     };
   });
 }
@@ -296,6 +304,14 @@ function normalizeSlideSpec(source, base) {
         ? b.duration || 0
         : Math.min(600, Math.max(1, Math.round(Number(s.duration) || 8))),
     notes: str(s.notes, b.notes, 2000),
+    font: FONTS.includes(s.font) ? s.font : b.font || 'sans',
+    transition:
+      s.transition === undefined
+        ? b.transition || ''
+        : SLIDE_TRANSITIONS.includes(s.transition)
+          ? s.transition
+          : '',
+    hidden: s.hidden === undefined ? !!b.hidden : !!s.hidden,
     elements: normalizeElements(s.elements === undefined ? b.elements : s.elements),
   };
 }
@@ -309,6 +325,7 @@ function normalizeDeck(source, base) {
   return {
     id: b.id || crypto.randomUUID().slice(0, 8),
     name: (typeof s.name === 'string' ? s.name : b.name || 'Presentatie').slice(0, 80).trim() || 'Presentatie',
+    aspect: s.aspect === undefined ? b.aspect || '16:9' : ASPECTS.includes(s.aspect) ? s.aspect : '16:9',
     duration: Math.min(600, Math.max(1, Math.round(Number(s.duration ?? b.duration) || 8))),
     transition: ['none', 'fade', 'push', 'wipe', 'zoom'].includes(s.transition)
       ? s.transition
@@ -440,6 +457,7 @@ function playerPayload(screen) {
       const deck = db.presentations.find((d) => d.id === item.presentationId);
       if (!deck) continue;
       for (const slide of deck.slides || []) {
+        if (slide.hidden) continue;
         items.push({
           id: `${item.id}:${slide.id}`,
           type: 'slide',
@@ -452,7 +470,7 @@ function playerPayload(screen) {
             })),
           },
           duration: slide.duration || deck.duration || item.duration || 8,
-          transition: deck.transition || 'fade',
+          transition: slide.transition || deck.transition || 'fade',
           start: item.start || null,
           end: item.end || null,
           days: item.days || [],

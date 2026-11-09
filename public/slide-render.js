@@ -9,6 +9,12 @@
   const LAYOUTS = ['title', 'text', 'image-left', 'image-right', 'full', 'quote', 'free'];
   const SHAPES = ['rect', 'round', 'ellipse', 'triangle', 'line', 'arrow', 'star'];
   const ANIMS = ['none', 'fade', 'up', 'zoom'];
+  const FONTS = {
+    sans: 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
+    serif: 'Georgia, "Times New Roman", serif',
+    mono: '"Cascadia Mono", Consolas, "Courier New", monospace',
+    display: '"Arial Black", "Segoe UI", Impact, sans-serif',
+  };
   const SVG = 'http://www.w3.org/2000/svg';
 
   function el(tag, className, text) {
@@ -85,6 +91,7 @@
     const node = el('div', 'freeEl freeText');
     const size = clamp(element.size || 6, 1, 40);
     node.style.fontSize = 'calc(' + size + ' * 1cqh)';
+    node.style.fontFamily = FONTS[element.font] || FONTS.sans;
     node.style.fontWeight = element.weight === 'bold' ? '700' : '400';
     node.style.fontStyle = element.italic ? 'italic' : 'normal';
     node.style.textDecoration = element.underline ? 'underline' : 'none';
@@ -132,6 +139,11 @@
     }
     if (element.radius && type !== 'shape') node.style.borderRadius = clamp(element.radius, 0, 24) + 'px';
     if (element.opacity !== undefined) node.style.opacity = String(clamp(element.opacity, 0.05, 1));
+
+    const rotation = clamp(element.rotation, -180, 180);
+    const flips = (element.flipX ? ' scaleX(-1)' : '') + (element.flipY ? ' scaleY(-1)' : '');
+    if (rotation || flips) node.style.transform = 'rotate(' + rotation + 'deg)' + flips;
+    if (element.shadow) node.style.filter = 'drop-shadow(0 0.6cqh 1.4cqh rgba(0, 0, 0, .45))';
 
     if (type === 'shape') node.appendChild(shapeNode(element));
 
@@ -187,6 +199,7 @@
     const layout = LAYOUTS.includes(s.layout) ? s.layout : 'title';
 
     const view = el('div', 'slideView layout-' + layout + ' ' + (s.align === 'left' ? 'left' : 'center'));
+    view.style.fontFamily = FONTS[s.font] || FONTS.sans;
     view.style.setProperty('--slide-bg', s.bg || '#0f172a');
     view.style.setProperty('--slide-fg', s.fg || '#f8fafc');
     view.style.setProperty('--slide-accent', s.accent || '#5b8cff');
@@ -242,5 +255,5 @@
     return view;
   }
 
-  window.SlideRender = { render, layouts: LAYOUTS, shapes: SHAPES, animations: ANIMS };
+  window.SlideRender = { render, layouts: LAYOUTS, shapes: SHAPES, animations: ANIMS, fonts: Object.keys(FONTS) };
 })();
