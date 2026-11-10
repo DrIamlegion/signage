@@ -19,12 +19,21 @@ const DATA = process.env.SIGNAGE_DATA ? path.resolve(process.env.SIGNAGE_DATA) :
 const MEDIA = path.join(DATA, 'media');
 const DB_FILE = path.join(DATA, 'db.json');
 const PORT = Number(process.env.PORT || 8100);
+// fs.watch kan op Windows na verloop van tijd stilvallen. Naast de watch
+// controleren we daarom ook regelmatig de mtime/size van db.json.
+const DB_POLL_MS = Math.max(500, Number(process.env.SIGNAGE_DB_POLL_MS) || 2000);
 const MAX_UPLOAD = 2 * 1024 * 1024 * 1024; // 2 GB
-const APP_VERSION = '1.3.1'; // houd gelijk aan installer/Cargo.toml
+const APP_VERSION = '1.3.5'; // houd gelijk aan installer/Cargo.toml
 const UPDATE_FEED =
   process.env.SIGNAGE_UPDATE_FEED || 'https://api.github.com/repos/DrIamlegion/signage/releases/latest';
 const UPDATE_TTL = 6 * 60 * 60 * 1000;
 const UPDATE_ERROR_TTL = 10 * 60 * 1000;
+// Hoe vaak de zender de release-info ververst, zodat een nieuwe versie ook
+// zonder herstart of bezoek aan het beheer bij de ontvangers terechtkomt.
+const UPDATE_REFRESH = Math.max(
+  60 * 1000,
+  Number(process.env.SIGNAGE_UPDATE_REFRESH_MS) || 5 * 60 * 1000
+);
 let updateCache = { at: 0, data: null };
 
 for (const dir of [DATA, MEDIA]) fs.mkdirSync(dir, { recursive: true });
@@ -105,27 +114,119 @@ function loadDb() {
   return base;
 }
 
+/* ---- live herladen: de native editor schrijft rechtstreeks naar db.json ---- */
+
+let dbWatchTimer = null;
+let dbWatcher = null;
+let dbPollTimer = null;
+let dbFileStamp = null;
+
+function dbFileSignature() {
+  try {
+    const stat = fs.statSync(DB_FILE);
+    return `${stat.mtimeMs}:${stat.ctimeMs}:${stat.size}`;
+  } catch {
+    return '';
+  }
+}
+
 function saveDb() {
   const tmp = DB_FILE + '.tmp';
   fs.writeFileSync(tmp, JSON.stringify(db, null, 2));
   fs.renameSync(tmp, DB_FILE);
+  dbFileStamp = dbFileSignature();
 }
+
+function reloadDbFromDisk() {
+  let next;
+  try {
+    next = JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
+  } catch {
+    return false; // half geschreven bestand; een volgende melding probeert opnieuw
+  }
+  if (!next || typeof next !== 'object' || Array.isArray(next)) return false;
+  if (JSON.stringify(next) === JSON.stringify(db)) return true; // eigen saveDb
+
+  if (!Array.isArray(next.screens)) next.screens = [];
+  if (!Array.isArray(next.media)) next.media = [];
+  if (!Array.isArray(next.presentations)) next.presentations = [];
+  next.settings = { defaultDuration: 10, title: 'Signage', ...(next.settings || {}) };
+
+  for (const key of Object.keys(db)) delete db[key];
+  Object.assign(db, next);
+
+  // spelers verversen op basis van updatedAt; een native wijziging raakt ook
+  // presentaties die in een playlist zitten, dus alle schermen krijgen een tik.
+  const now = Date.now();
+  for (const screen of db.screens) screen.updatedAt = now;
+
+  console.log('  Database live herladen van schijf.');
+  return true;
+}
+
+function pollDbFile() {
+  const stamp = dbFileSignature();
+  if (!stamp || stamp === dbFileStamp) return;
+  // Alleen de stempel bijwerken als het bestand volledig leesbaar was;
+  // anders probeert de volgende ronde het opnieuw.
+  if (reloadDbFromDisk()) dbFileStamp = stamp;
+}
+
+function watchDbFile() {
+  dbFileStamp = dbFileSignature();
+  try {
+    dbWatcher = fs.watch(DATA, { persistent: false }, (_event, filename) => {
+      if (!filename || String(filename).toLowerCase() !== 'db.json') return;
+      const stamp = dbFileSignature();
+      clearTimeout(dbWatchTimer);
+      dbWatchTimer = setTimeout(() => {
+        if (reloadDbFromDisk()) dbFileStamp = stamp;
+      }, 120);
+    });
+    dbWatcher.on('error', (err) => {
+      console.warn('  Live watch gestopt; pollingfallback neemt over:', err.message);
+      try {
+        dbWatcher.close();
+      } catch {
+        /* al gesloten */
+      }
+      dbWatcher = null;
+    });
+    console.log('  Live herladen van db.json is actief.');
+  } catch (err) {
+    console.warn('  Live watch niet beschikbaar; pollingfallback is actief:', err.message);
+  }
+
+  // fs.watch is de snelle route; deze timer vangt een stilgevallen of
+  // ontbrekende watcher op. De interval is bewust klein genoeg voor signage,
+  // maar leest db.json alleen als de mtime/size echt is veranderd.
+  dbPollTimer = setInterval(pollDbFile, DB_POLL_MS);
+  if (dbPollTimer.unref) dbPollTimer.unref();
+}
+
+watchDbFile();
 
 function hashPassword(pw) {
   return crypto.scryptSync(String(pw), db.salt, 32).toString('hex');
 }
 
-if (!db.password) {
-  const generated = process.env.SIGNAGE_PASSWORD || crypto.randomBytes(4).toString('hex');
-  db.password = hashPassword(generated);
+if (!db.password && process.env.SIGNAGE_PASSWORD) {
+  db.password = hashPassword(process.env.SIGNAGE_PASSWORD);
   saveDb();
-  fs.writeFileSync(path.join(DATA, 'admin-password.txt'), generated + '\n');
-  console.log('\n  Wachtwoord ingesteld: ' + generated);
-  console.log('  (opgeslagen in data/admin-password.txt)\n');
+  fs.writeFileSync(path.join(DATA, 'admin-password.txt'), process.env.SIGNAGE_PASSWORD + '\n');
+  console.log('\n  Wachtwoord ingesteld via SIGNAGE_PASSWORD.\n');
+}
+if (!db.password) {
+  console.log('\n  Nog geen beheerwachtwoord: open het beheer op deze computer om er een te kiezen.\n');
 }
 
 function sessionToken() {
   return crypto.createHash('sha256').update(db.password + db.salt).digest('hex');
+}
+
+function isLoopback(req) {
+  const address = (req.socket && req.socket.remoteAddress) || '';
+  return address === '127.0.0.1' || address === '::1' || address === '::ffff:127.0.0.1';
 }
 
 /* ---------------------------------------------------------------- helpers */
@@ -744,6 +845,31 @@ async function handle(req, res) {
     return serveStatic(req, res, p);
   }
 
+  /* ---- eerste keer: wachtwoord kiezen, alleen op deze computer ---- */
+  if (p === '/api/setup' && method === 'GET') {
+    return json(res, 200, { needed: !db.password, local: isLoopback(req) });
+  }
+
+  if (p === '/api/setup' && method === 'POST') {
+    if (db.password) return json(res, 409, { error: 'Er is al een wachtwoord ingesteld' });
+    if (!isLoopback(req)) {
+      return json(res, 403, { error: 'Stel het wachtwoord in op de computer waar Signage draait' });
+    }
+    const body = await readJson(req).catch(() => ({}));
+    const password = String(body.password || '');
+    if (password.length < 6) {
+      return json(res, 400, { error: 'Kies een wachtwoord van minstens 6 tekens' });
+    }
+    db.password = hashPassword(password);
+    saveDb();
+    fs.writeFileSync(path.join(DATA, 'admin-password.txt'), password + '\n');
+    res.setHeader(
+      'Set-Cookie',
+      `sig=${sessionToken()}; Path=/; HttpOnly; SameSite=Lax; Max-Age=2592000`
+    );
+    return json(res, 200, { ok: true });
+  }
+
   /* ---- login ---- */
   if (p === '/api/login' && method === 'POST') {
     let body;
@@ -751,6 +877,9 @@ async function handle(req, res) {
       body = await readJson(req);
     } catch {
       return json(res, 400, { error: 'Ongeldige aanvraag' });
+    }
+    if (!db.password) {
+      return json(res, 409, { error: 'Stel eerst een wachtwoord in voor het beheer' });
     }
     if (!body.password || hashPassword(body.password) !== db.password) {
       return json(res, 401, { error: 'Onjuist wachtwoord' });
@@ -1024,4 +1153,9 @@ server.listen(PORT, '0.0.0.0', () => {
       }
     })
     .catch(() => {});
+
+  const updateTimer = setInterval(() => {
+    checkForUpdate(true).catch(() => {});
+  }, UPDATE_REFRESH);
+  if (updateTimer.unref) updateTimer.unref();
 });
