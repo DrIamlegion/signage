@@ -1,0 +1,96 @@
+name: Signage release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    uses: ./.github/workflows/signage-build.yml
+
+  publish:
+    name: Publish release
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+          pattern: Signage-*-windows-x64
+          merge-multiple: true
+
+      - name: Prepare and verify assets
+        run: |
+          test -s release-assets/Signage-Setup.exe
+          test -s release-assets/signage-studio.exe
+          test -s release-assets/Signage-Studio-Setup.exe
+          mv release-assets/signage-studio.exe release-assets/Signage-Studio.exe
+          cp verify-checksums.ps1 release-assets/
+          cp LICENSE NOTICE THIRD-PARTY-NOTICES.md release-assets/
+          cp -R licenses release-assets/
+          test -s release-assets/LICENSE
+          test -s release-assets/NOTICE
+          test -s release-assets/THIRD-PARTY-NOTICES.md
+          test -s release-assets/licenses/DeckCraft-NOTICE.txt
+          test -s release-assets/licenses/DeckCraft-ATTRIBUTION.md
+          ls -lh release-assets
+
+      - name: Create SHA-256 checksums
+        run: |
+          (
+            cd release-assets
+            sha256sum Signage-Setup.exe Signage-Studio.exe Signage-Studio-Setup.exe verify-checksums.ps1 LICENSE NOTICE THIRD-PARTY-NOTICES.md licenses/* > SHA256SUMS.txt
+            sha256sum -c SHA256SUMS.txt
+            cat SHA256SUMS.txt
+          )
+
+      - name: Verify tag matches installer version
+        run: |
+          version="$(sed -n 's/^version = "\([^"]*\)"$/\1/p' installer/Cargo.toml | head -n 1)"
+          tag="${GITHUB_REF_NAME#v}"
+          if [ -z "$version" ] || [ "$version" != "$tag" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME hoort bij installer-versie $version, niet bij $tag."
+            exit 1
+          fi
+          echo "Releasing Signage $version"
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" \
+              release-assets/Signage-Setup.exe \
+              release-assets/Signage-Studio.exe \
+              release-assets/Signage-Studio-Setup.exe \
+              release-assets/verify-checksums.ps1 \
+              release-assets/LICENSE \
+              release-assets/NOTICE \
+              release-assets/THIRD-PARTY-NOTICES.md \
+              release-assets/licenses/* \
+              release-assets/SHA256SUMS.txt \
+              --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" \
+              release-assets/Signage-Setup.exe \
+              release-assets/Signage-Studio.exe \
+              release-assets/Signage-Studio-Setup.exe \
+              release-assets/verify-checksums.ps1 \
+              release-assets/LICENSE \
+              release-assets/NOTICE \
+              release-assets/THIRD-PARTY-NOTICES.md \
+              release-assets/licenses/* \
+              release-assets/SHA256SUMS.txt \
+              --title "Signage $GITHUB_REF_NAME" \
+              --generate-notes
+          fi

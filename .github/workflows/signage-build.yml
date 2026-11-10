@@ -1,0 +1,215 @@
+name: Signage native and installer build
+
+on:
+  push:
+    paths:
+      - 'native/**'
+      - 'installer/**'
+      - 'native-installer/**'
+      - 'deckcraft/**'
+      - 'public/**'
+      - 'server.js'
+      - 'README.md'
+      - 'LICENSE'
+      - 'NOTICE'
+      - 'THIRD-PARTY-NOTICES.md'
+      - 'licenses/**'
+      - '.github/workflows/signage-build.yml'
+  pull_request:
+    paths:
+      - 'native/**'
+      - 'installer/**'
+      - 'native-installer/**'
+      - 'deckcraft/**'
+      - 'public/**'
+      - 'server.js'
+      - 'README.md'
+      - 'LICENSE'
+      - 'NOTICE'
+      - 'THIRD-PARTY-NOTICES.md'
+      - 'licenses/**'
+      - '.github/workflows/signage-build.yml'
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: signage-build-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  license-assets:
+    name: License assets
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify license assets
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          files=(
+            LICENSE
+            NOTICE
+            THIRD-PARTY-NOTICES.md
+            licenses/DeckCraft-NOTICE.txt
+            licenses/DeckCraft-ATTRIBUTION.md
+            licenses/DeckCraft-LICENSE-APACHE.txt
+            licenses/DeckCraft-LICENSE-MIT.txt
+            licenses/DeckCraft-font-licenses.txt
+            licenses/pdf-writer-LICENSE-ICC.txt
+            licenses/ArtCraft-brand-LICENSE.txt
+          )
+
+          for file in "${files[@]}"; do
+            if [ ! -s "$file" ]; then
+              echo "::error::Licentiebestand ontbreekt of is leeg: $file"
+              exit 1
+            fi
+          done
+
+          grep -q "Apache License" LICENSE
+          grep -q "Version 2.0" LICENSE
+          grep -q "DeckCraft" NOTICE
+          grep -q "DeckCraft" THIRD-PARTY-NOTICES.md
+          grep -qi "Attribution" licenses/DeckCraft-ATTRIBUTION.md
+          grep -q "Apache License" licenses/DeckCraft-LICENSE-APACHE.txt
+          grep -q "MIT License" licenses/DeckCraft-LICENSE-MIT.txt
+          grep -q "ArtCraft" licenses/ArtCraft-brand-LICENSE.txt
+          grep -q "CC0 1.0 Universal" licenses/pdf-writer-LICENSE-ICC.txt
+
+          font_bytes="$(wc -c < licenses/DeckCraft-font-licenses.txt)"
+          if [ "$font_bytes" -lt 100000 ]; then
+            echo "::error::De DeckCraft-fontlicentiebundel is verdacht klein ($font_bytes bytes)."
+            exit 1
+          fi
+
+          echo "Licentie-assets OK ($font_bytes bytes aan fontlicenties)."
+
+  installer:
+    name: Installer
+    needs: license-assets
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: installer -> target
+
+      - name: Build installer
+        run: cargo build --release --locked --manifest-path installer/Cargo.toml
+
+      - name: Verify installer
+        shell: pwsh
+        run: |
+          $exe = Join-Path $env:GITHUB_WORKSPACE 'installer\target\release\Signage-Setup.exe'
+          if (-not (Test-Path -LiteralPath $exe)) {
+            throw "Signage-Setup.exe is niet gebouwd."
+          }
+          $size = (Get-Item -LiteralPath $exe).Length
+          if ($size -le 0) {
+            throw "Signage-Setup.exe is leeg."
+          }
+          Write-Host "Built $exe ($size bytes)"
+
+      - name: Upload installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: Signage-Setup-windows-x64
+          path: installer/target/release/Signage-Setup.exe
+          if-no-files-found: error
+          retention-days: 14
+
+  native:
+    name: Native app
+    needs: license-assets
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check integrated sources
+        shell: pwsh
+        run: |
+          $required = @(
+            'native/Cargo.toml',
+            'native/Cargo.lock',
+            'deckcraft/deckcraft-main/Cargo.toml',
+            'deckcraft/deckcraft-main/Cargo.lock'
+          )
+          $missing = $required | Where-Object { -not (Test-Path -LiteralPath $_) }
+          if ($missing) {
+            throw ("Native build mist bronbestanden: " + ($missing -join ', ') + ". Commit native/ en deckcraft/.")
+          }
+
+      - name: Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: native -> target
+
+      - name: Build native app
+        run: cargo build --release --locked --manifest-path native/Cargo.toml
+
+      - name: Verify native app
+        shell: pwsh
+        run: |
+          $exe = Join-Path $env:GITHUB_WORKSPACE 'native\target\release\signage-studio.exe'
+          if (-not (Test-Path -LiteralPath $exe)) {
+            throw "signage-studio.exe is niet gebouwd."
+          }
+          $size = (Get-Item -LiteralPath $exe).Length
+          if ($size -le 0) {
+            throw "signage-studio.exe is leeg."
+          }
+          Write-Host "Built $exe ($size bytes)"
+
+      - name: Build uninstaller
+        run: cargo build --release --locked --manifest-path native-installer/uninstaller/Cargo.toml
+
+      - name: Build native installer
+        run: cargo build --release --locked --manifest-path native-installer/Cargo.toml
+
+      - name: Verify native installer
+        shell: pwsh
+        run: |
+          $exe = Join-Path $env:GITHUB_WORKSPACE 'native-installer\target\release\Signage-Studio-Setup.exe'
+          if (-not (Test-Path -LiteralPath $exe)) {
+            throw "Signage-Studio-Setup.exe is niet gebouwd."
+          }
+          $size = (Get-Item -LiteralPath $exe).Length
+          if ($size -le 0) {
+            throw "Signage-Studio-Setup.exe is leeg."
+          }
+          Write-Host "Built $exe ($size bytes)"
+
+      - name: Upload native app
+        uses: actions/upload-artifact@v4
+        with:
+          name: Signage-Studio-windows-x64
+          path: native/target/release/signage-studio.exe
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload native installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: Signage-Studio-Setup-windows-x64
+          path: native-installer/target/release/Signage-Studio-Setup.exe
+          if-no-files-found: error
+          retention-days: 14

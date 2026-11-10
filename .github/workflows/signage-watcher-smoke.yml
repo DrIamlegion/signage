@@ -1,0 +1,40 @@
+name: Signage watcher smoke
+
+on:
+  push:
+    paths:
+      - 'server.js'
+      - 'test/**'
+      - '.github/workflows/signage-watcher-smoke.yml'
+  pull_request:
+    paths:
+      - 'server.js'
+      - 'test/**'
+      - '.github/workflows/signage-watcher-smoke.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  watcher-smoke:
+    name: Watcher smoke (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Run watcher smoke test
+        run: node --test test/watcher-smoke.test.js

@@ -1,0 +1,21 @@
+[package]
+name = "signage-studio-uninstaller"
+version = "0.3.0"
+edition = "2021"
+description = "Verwijderaar voor Signage Studio"
+license = "Apache-2.0"
+
+[[bin]]
+name = "Signage-Studio-Uninstall"
+path = "src/main.rs"
+
+[dependencies]
+winreg = "0.52"
+windows-sys = { version = "0.59", features = [
+    "Win32_UI_WindowsAndMessaging",
+] }
+
+[profile.release]
+opt-level = "z"
+lto = true
+panic = "abort"

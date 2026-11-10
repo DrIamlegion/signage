@@ -38,6 +38,39 @@ use windows_sys::Win32::UI::WindowsAndMessaging::{
 static PUBLIC: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/../public");
 const SERVER_JS: &[u8] = include_bytes!("../../server.js");
 const README_MD: &[u8] = include_bytes!("../../README.md");
+const LICENSE: &[u8] = include_bytes!("../../LICENSE");
+const NOTICE: &[u8] = include_bytes!("../../NOTICE");
+const THIRD_PARTY_NOTICES: &[u8] = include_bytes!("../../THIRD-PARTY-NOTICES.md");
+const LICENSE_FILES: &[(&str, &[u8])] = &[
+    (
+        "DeckCraft-NOTICE.txt",
+        include_bytes!("../../deckcraft/deckcraft-main/NOTICE"),
+    ),
+    (
+        "DeckCraft-ATTRIBUTION.md",
+        include_bytes!("../../deckcraft/deckcraft-main/ATTRIBUTION.md"),
+    ),
+    (
+        "DeckCraft-LICENSE-APACHE.txt",
+        include_bytes!("../../deckcraft/deckcraft-main/LICENSE-APACHE"),
+    ),
+    (
+        "DeckCraft-LICENSE-MIT.txt",
+        include_bytes!("../../deckcraft/deckcraft-main/LICENSE-MIT"),
+    ),
+    (
+        "pdf-writer-LICENSE-ICC.txt",
+        include_bytes!("../../deckcraft/deckcraft-main/licenses/pdf-writer/LICENSE-ICC.txt"),
+    ),
+    (
+        "ArtCraft-brand-LICENSE.txt",
+        include_bytes!("../../deckcraft/deckcraft-main/docs/brand/LICENSE-brand.txt"),
+    ),
+    (
+        "DeckCraft-font-licenses.txt",
+        include_bytes!("../../licenses/DeckCraft-font-licenses.txt"),
+    ),
+];
 
 const APP_NAME: &str = "Signage";
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -166,7 +199,45 @@ fn start_menu_dir() -> Option<PathBuf> {
     })
 }
 
+fn expand_env_vars(value: &str) -> String {
+    let mut out = String::new();
+    let mut rest = value;
+    while let Some(start) = rest.find('%') {
+        out.push_str(&rest[..start]);
+        let after = &rest[start + 1..];
+        if let Some(end) = after.find('%') {
+            match env::var(&after[..end]) {
+                Ok(found) => out.push_str(&found),
+                Err(_) => {
+                    out.push('%');
+                    out.push_str(&after[..end]);
+                    out.push('%');
+                }
+            }
+            rest = &after[end + 1..];
+        } else {
+            out.push_str(&rest[start..]);
+            return out;
+        }
+    }
+    out.push_str(rest);
+    out
+}
+
+/// Het echte bureaublad. OneDrive kan de map verplaatsen, dus vraag het pad op
+/// in plaats van blind `%USERPROFILE%\Desktop` te gebruiken.
 fn desktop_dir() -> Option<PathBuf> {
+    let hkcu = RegKey::predef(HKEY_CURRENT_USER);
+    if let Ok(key) =
+        hkcu.open_subkey(r"Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders")
+    {
+        if let Ok(value) = key.get_value::<String, _>("Desktop") {
+            let path = PathBuf::from(expand_env_vars(&value));
+            if !path.as_os_str().is_empty() {
+                return Some(path);
+            }
+        }
+    }
     Some(env::var_os("USERPROFILE")?.into()).map(|p: PathBuf| p.join("Desktop"))
 }
 
@@ -352,8 +423,20 @@ fn install(opts: &Opts) -> Result<Report, String> {
 
     fs::write(app.join("server.js"), SERVER_JS).map_err(|e| format!("server.js schrijven: {e}"))?;
     fs::write(app.join("LEESMIJ.md"), README_MD).map_err(|e| format!("LEESMIJ.md schrijven: {e}"))?;
-    files += 2;
-    bytes += (SERVER_JS.len() + README_MD.len()) as u64;
+    fs::write(root.join("LICENSE"), LICENSE).map_err(|e| format!("LICENSE schrijven: {e}"))?;
+    fs::write(root.join("NOTICE"), NOTICE).map_err(|e| format!("NOTICE schrijven: {e}"))?;
+    fs::write(root.join("THIRD-PARTY-NOTICES.md"), THIRD_PARTY_NOTICES)
+        .map_err(|e| format!("THIRD-PARTY-NOTICES.md schrijven: {e}"))?;
+    fs::create_dir_all(root.join("licenses"))
+        .map_err(|e| format!("licensemap aanmaken: {e}"))?;
+    for (name, contents) in LICENSE_FILES {
+        fs::write(root.join("licenses").join(name), contents)
+            .map_err(|e| format!("licenses/{name} schrijven: {e}"))?;
+        files += 1;
+        bytes += contents.len() as u64;
+    }
+    files += 5;
+    bytes += (SERVER_JS.len() + README_MD.len() + LICENSE.len() + NOTICE.len() + THIRD_PARTY_NOTICES.len()) as u64;
 
     // de launcher is een kopie van deze executable
     let launcher = root.join("Signage.exe");
@@ -1068,6 +1151,7 @@ fn run(opts: &Opts) -> Result<i32, String> {
             if firewall_wanted {
                 println!("firewall: {firewall_status}");
             }
+            println!("beheerwachtwoord: kies het bij de eerste keer openen van het beheer (of gebruik SIGNAGE_PASSWORD).");
         } else {
             let start = confirm(&format!(
                 "{APP_NAME} is geïnstalleerd in:\n{}\n\n{} bestanden, {} KB.{firewall_note}\n\nNu starten en het beheer in de browser openen?",
@@ -1078,8 +1162,7 @@ fn run(opts: &Opts) -> Result<i32, String> {
             if start {
                 match serve(opts) {
                     Ok(url) => info(&format!(
-                        "Signage draait op {url}\n\nHet beheerwachtwoord staat in:\n{}",
-                        data_dir().join("admin-password.txt").display()
+                        "Signage draait op {url}\n\nKies in de browser meteen een wachtwoord voor het beheer.\nJe kunt het later wijzigen bij Instellingen → Wachtwoord."
                     )),
                     Err(message) => error(&message),
                 }
